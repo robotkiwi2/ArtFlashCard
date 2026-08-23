@@ -6,3 +6,6 @@ desktop.ini
 # 임시 테스트 파일
 __test.html
 *.tmp
+
+# 원본 업로드 파일 (cards.csv로 병합 반영됨)
+data/cards-v2.csv
