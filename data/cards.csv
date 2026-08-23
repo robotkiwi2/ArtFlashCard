@@ -1,0 +1,25 @@
+id,표제어,표제어변형,설명,이미지링크,중요도,과목,유형,시대,태그
+1,진경산수화,眞景山水畵,중국 남종화의 관념적 필법에서 벗어나 우리 국토의 실경을 직접 답사·사생하여 그린 조선 후기 화풍. 겸재 정선이 개척,https://upload.wikimedia.org/wikipedia/commons/6/6f/After_Rain_at_Mt._Inwang.jpg,1,한국미술사,사조,조선후기,정선;산수화
+2,적묵법,積墨法,짙은 먹을 마르기 전에 여러 번 겹쳐 발라 쌓아 올리는 필묵법. 인왕제색도의 화강암 봉우리 표현에 사용,,1,한국미술사,기법,조선후기,정선;필묵법
+3,갈필,渴筆 / 乾筆,붓의 수분을 극도로 제한하여 거칠고 까칠하게 긋는 필법. 김정희 세한도의 고졸한 겨울 분위기 표현,,1,한국미술사,기법,조선후기,김정희;문인화
+4,서권기 문자향,書卷氣 文字香,깊은 학문적 소양에서 우러나는 책의 기운과 문자의 향기가 붓끝에 배어나는 경지. 추사 김정희가 제창한 문인화론,,1,한국미술사,개념,조선후기,김정희;문인화론
+5,풍속화,風俗畵,서민들의 생업과 놀이 등 일상생활을 소재로 그린 조선 후기 회화 장르. 김홍도·신윤복·김득신이 대표,https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Danwon_Ssireum.jpg/1280px-Danwon_Ssireum.jpg,1,한국미술사,사조,조선후기,김홍도;신윤복
+6,담채,淡彩,먹선 위에 옅고 산뜻한 채색을 흐리게 우려내는 채색 기법. 수묵담채화의 기본,,2,한국미술사,기법,,채색
+7,실납법,蠟型法 / Lost-wax casting,밀랍 원형에 내·외형토를 씌우고 가열해 밀랍을 녹여낸 빈 공간에 쇳물을 부어 주조하는 기법. 성덕대왕신종 등,,2,표현기법,기법,,주조;청동;로스트왁스
+8,콘트라포스토,Contrapposto,한쪽 다리에 무게 중심을 두어 골반과 어깨의 축이 반대로 기울어지는 인체 자세. 자연스러운 생동감 형성,https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Michelangelo%27s_David_-_right_view_2.jpg/1280px-Michelangelo%27s_David_-_right_view_2.jpg,1,서양미술사,원리,르네상스,조각;미켈란젤로
+9,테네브리즘,Tenebrism,배경을 어둠으로 소거하고 표적 인물에만 극단적 단일 광선을 투사하는 17세기 바로크 명암법. 카라바조가 대표,,1,서양미술사,기법,바로크,카라바조;명암법
+10,임파스토,Impasto,물감을 두껍게 쌓아 올려 붓 자국과 질감 자체가 도드라지게 하는 유화 기법. 반 고흐가 애용,https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Vincent_van_Gogh%2C_The_Starry_Night_%281889%29%2C_MoMA.jpg/1280px-Vincent_van_Gogh%2C_The_Starry_Night_%281889%29%2C_MoMA.jpg,2,서양미술사,기법,근대,반고흐;유화
+11,표현주의,Expressionism,대상의 객관적 재현보다 작가의 내면 감정을 왜곡된 형태와 색채로 표출하는 사조. 뭉크의 절규가 선구,https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Edvard_Munch%2C_1893%2C_The_Scream%2C_oil%2C_tempera_and_pastel_on_cardboard%2C_91_x_73_cm%2C_National_Gallery_of_Norway.jpg/1280px-Edvard_Munch%2C_1893%2C_The_Scream%2C_oil%2C_tempera_and_pastel_on_cardboard%2C_91_x_73_cm%2C_National_Gallery_of_Norway.jpg,1,서양미술사,사조,근대,뭉크;독일표현주의
+12,색채 분할,Divisionism / Optical Mixture,순색을 팔레트에서 섞지 않고 캔버스에 병치하여 관람자의 눈에서 광학적으로 혼색되게 하는 인상주의 채색법,,2,서양미술사,기법,근대,인상주의;모네
+13,니시키에,錦絵,에도 시대의 다색 목판화. 색상별로 별도의 판을 제작해 켄토(見当)로 정렬하며 겹쳐 찍는다,https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/The_Great_Wave_off_Kanagawa.jpg/1280px-The_Great_Wave_off_Kanagawa.jpg,2,동양미술사,기법,에도,호쿠사이;우키요에;판화
+14,남종화,南宗畵,문인 사대부가 여기(餘技)로 그린 수묵 위주의 관념적 산수화 전통. 시서화 일치 사상과 결부,,1,동양미술사,사조,,문인화;산수화
+15,학문 중심 미술교육,DBAE / Discipline-Based Art Education,미술제작·미술사·미학·미술비평 네 학문 영역을 균형 있게 통합 지도하는 이론. 아이스너 등이 정립,,1,미술교육학,개념,,아이스너;교육과정
+16,펠드만 비평 4단계,Feldman's Four Stages of Art Criticism,서술→분석→해석→판단 순으로 진행되는 미술 비평 지도 모형,,1,미술교육학,원리,,비평;감상교육
+17,도식기,圖式期 / Schematic Stage,로웬펠드 발달단계 중 7~9세. 정형화된 도식 반복 사용·기저선 등장이 특징,,1,미술교육학,개념,,로웬펠드;발달단계
+18,또래집단기,Gang Age,로웬펠드 발달단계 중 9~11세. 또래와 비교하며 사실적 표현에 대한 비판적 인식이 싹트는 시기,,2,미술교육학,개념,,로웬펠드;발달단계
+19,미적 주사,Aesthetic Scanning,브라우디가 주창한 체계적 감상 지도 기법. 감각적→형식적→기술적→표현적 속성 순으로 지각 훈련,,2,미술교육학,원리,,브라우디;감상교육
+20,비계설정,Scaffolding,학습자의 근접발달영역(ZPD) 내에서 교사가 제공하는 임시 지원. 비고츠키 이론 기반,,1,일반교육학,개념,,비고츠키;구성주의
+21,형성평가,形成評價 / Formative Assessment,수업 진행 중 학습 상태를 점검하여 교수·학습 개선에 활용하는 평가,,2,일반교육학,개념,,평가
+22,부적 잔상,負的殘像 / Negative Afterimage,특정 색을 응시한 후 백색 면에서 원 자극색의 보색이 나타나 보이는 현상. 추상체의 피로(순응)가 원인,,2,표현기법,원리,,색채학;잔상
+23,연변대비,緣邊對比 / Edge Contrast,명도 단계가 인접할 때 경계부에서 명도차가 실제보다 극대화되어 지각되는 현상. 측면억제가 원인,,3,표현기법,원리,,색채학;대비
+24,켄토,見当,다색 목판화에서 여러 색판을 정확히 겹쳐 찍기 위해 판 모서리에 파 두는 정렬 기준 홈,,3,표현기법,기법,에도,판화;목판화

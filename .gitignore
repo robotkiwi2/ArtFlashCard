@@ -1,0 +1,8 @@
+# OS / 동기화 부산물
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 임시 테스트 파일
+__test.html
+*.tmp
