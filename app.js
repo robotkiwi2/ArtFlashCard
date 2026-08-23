@@ -7,6 +7,14 @@ let filters = { 유형: new Set(), 시대: new Set(), 태그: new Set(), 중요�
 let session = null;             // { queue, idx, mode, correct, wrongCards }
 
 const LS_KEY = "flashcard-stats-v1";
+const FS_KEY = "flashcard-fontsize-v1";
+const FONT_SIZES = [
+  { label: "작게",    scale: 1.0 },
+  { label: "보통",    scale: 1.2 },   // 기본값
+  { label: "크게",    scale: 1.45 },
+  { label: "아주 크게", scale: 1.75 },
+];
+const FS_DEFAULT = 1.2;
 const DEP_KEYS = [
   ["유형", "filter-type"],
   ["시대", "filter-era"],
@@ -108,6 +116,31 @@ function weightedSample(pool, n) {
     items.splice(i, 1);
   }
   return out;
+}
+
+// ===== 글자 크기 =====
+function loadFontScale() {
+  const v = parseFloat(localStorage.getItem(FS_KEY));
+  return FONT_SIZES.some(f => f.scale === v) ? v : FS_DEFAULT;
+}
+function applyFontScale(scale) {
+  document.documentElement.style.setProperty("--fs", scale);
+  try { localStorage.setItem(FS_KEY, String(scale)); } catch {}
+}
+function buildFontChips() {
+  const el = document.getElementById("filter-fontsize");
+  const cur = loadFontScale();
+  el.innerHTML = "";
+  FONT_SIZES.forEach(f => {
+    const chip = document.createElement("span");
+    chip.className = "chip" + (f.scale === cur ? " on" : "");
+    chip.textContent = f.label;
+    chip.onclick = () => {
+      applyFontScale(f.scale);
+      buildFontChips();          // 단일 선택이므로 다시 그린다
+    };
+    el.appendChild(chip);
+  });
 }
 
 // ===== 클릭음 (Web Audio, 외부 파일 없음) =====
@@ -408,6 +441,8 @@ function renderStats() {
 
 // ===== 초기화 =====
 async function init() {
+  applyFontScale(loadFontScale());   // 저장된 글자 크기를 먼저 반영
+  buildFontChips();
   await loadCards();
   buildSubjectChips();
   rebuildDependentChips();     // 유형·시대·태그·중요도 전체 선택 상태로 시작
