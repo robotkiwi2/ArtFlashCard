@@ -58,14 +58,56 @@ function loadStats() {
   try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }
   catch { return {}; }
 }
+// box = 연속 정답 횟수(0~5). 맞히면 오르고 틀리면 0으로 초기화된다.
+// wrong = 오답 노트 수록 여부. 틀리면 true·맞히면 false.
 function saveResult(cardId, isCorrect) {
   const stats = loadStats();
-  const s = stats[cardId] || { tries: 0, correct: 0 };
+  const s = stats[cardId] || { tries: 0, correct: 0, box: 0 };
   s.tries++;
-  if (isCorrect) s.correct++;
+  if (isCorrect) {
+    s.correct++;
+    s.box = Math.min((s.box || 0) + 1, 5);
+    s.wrong = false;
+  } else {
+    s.box = 0;
+    s.wrong = true;
+  }
   s.last = new Date().toISOString().slice(0, 10);
   stats[cardId] = s;
   try { localStorage.setItem(LS_KEY, JSON.stringify(stats)); } catch {}
+}
+
+function wrongCards() {
+  const stats = loadStats();
+  return CARDS.filter(c => stats[c.id] && stats[c.id].wrong);
+}
+
+// 출제 가중치: 미학습 > 오답 > 맞힌 지 얼마 안 된 카드 순으로 높다.
+function cardWeight(c, stats) {
+  const s = stats[c.id];
+  if (!s) return 8;                                   // 아직 안 본 카드 최우선
+  let w = 8 / Math.pow(2, Math.min(s.box || 0, 5));   // 연속 정답마다 절반씩 감소
+  if (s.wrong) w *= 2;                                // 오답 상태면 두 배
+  const days = s.last
+    ? Math.max(0, (Date.now() - new Date(s.last).getTime()) / 86400000)
+    : 0;
+  w *= 1 + Math.min(days, 30) / 15;                   // 오래 방치될수록 최대 3배까지 회복
+  return w;
+}
+
+// 가중치를 반영한 비복원 추출
+function weightedSample(pool, n) {
+  const stats = loadStats();
+  const items = pool.map(c => ({ c, w: cardWeight(c, stats) }));
+  const out = [];
+  while (out.length < n && items.length) {
+    const total = items.reduce((sum, it) => sum + it.w, 0);
+    let r = Math.random() * total, i = 0;
+    for (; i < items.length - 1; i++) { r -= items[i].w; if (r <= 0) break; }
+    out.push(items[i].c);
+    items.splice(i, 1);
+  }
+  return out;
 }
 
 // ===== 클릭음 (Web Audio, 외부 파일 없음) =====
@@ -200,22 +242,42 @@ function show(name) {
 }
 
 // ===== 학습 세션 =====
-function shuffle(arr) {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
+function sessionSize(poolLen) {
+  return Math.min(parseInt(document.getElementById("session-count").value, 10) || 10, poolLen);
 }
 
 function startSession() {
   const pool = filteredPool();
   if (!pool.length) { alert("선택한 범위에 카드가 없습니다."); return; }
-  const n = Math.min(parseInt(document.getElementById("session-count").value, 10) || 10, pool.length);
-  session = { queue: shuffle(pool).slice(0, n), idx: 0, mode: getMode(), correct: 0, wrongCards: [] };
+  session = {
+    queue: weightedSample(pool, sessionSize(pool.length)),
+    idx: 0, mode: getMode(), correct: 0, wrongCards: [], isReview: false,
+  };
   show("quiz");
   renderCard();
+}
+
+// 오답 노트: 필터 범위를 무시하고 오답으로 기록된 카드만 출제
+function startReviewSession() {
+  let pool = wrongCards();
+  if (!pool.length) { alert("오답으로 기록된 카드가 없습니다."); return; }
+  if (getMode() === "image") {
+    pool = pool.filter(c => c.이미지링크);
+    if (!pool.length) { alert("오답 카드 중 이미지가 있는 것이 없습니다. 다른 제시 모드를 선택해 주세요."); return; }
+  }
+  session = {
+    queue: weightedSample(pool, sessionSize(pool.length)),
+    idx: 0, mode: getMode(), correct: 0, wrongCards: [], isReview: true,
+  };
+  show("quiz");
+  renderCard();
+}
+
+function updateWrongCount() {
+  const n = wrongCards().length;
+  const btn = document.getElementById("btn-wrongnote");
+  btn.textContent = n ? `오답 노트 (${n})` : "오답 노트";
+  btn.disabled = n === 0;
 }
 
 function imgTag(c) {
@@ -248,7 +310,7 @@ function renderCard() {
   document.getElementById("btn-reveal").classList.remove("hidden");
   document.getElementById("judge-buttons").classList.add("hidden");
   document.getElementById("quiz-progress").textContent =
-    `${session.idx + 1} / ${session.queue.length}`;
+    `${session.isReview ? "오답 노트 · " : ""}${session.idx + 1} / ${session.queue.length}`;
 }
 
 function reveal() {
@@ -272,10 +334,17 @@ function finishSession() {
   const pct = Math.round(session.correct / total * 100);
   document.getElementById("result-summary").textContent =
     `${total}문항 중 ${session.correct}개 정답 (${pct}%)`;
-  const wrongEl = document.getElementById("result-wrong-list");
-  wrongEl.innerHTML = session.wrongCards.length
-    ? `<h3>틀린 카드</h3><ul>` + session.wrongCards.map(c => `<li><b>${c.표제어}</b> — ${c.과목}</li>`).join("") + `</ul>`
-    : "";
+
+  const parts = [];
+  if (session.isReview && session.correct) {
+    parts.push(`<p class="cleared">✅ ${session.correct}장이 오답 노트에서 빠졌습니다 (남은 오답 ${wrongCards().length}장)</p>`);
+  }
+  if (session.wrongCards.length) {
+    parts.push(`<h3>틀린 카드</h3><ul>` +
+      session.wrongCards.map(c => `<li><b>${c.표제어}</b> — ${c.과목}</li>`).join("") + `</ul>`);
+  }
+  document.getElementById("result-wrong-list").innerHTML = parts.join("");
+  updateWrongCount();
   show("result");
 }
 
@@ -356,21 +425,25 @@ async function init() {
 
   document.querySelectorAll('input[name="mode"]').forEach(r => r.onchange = updatePoolCount);
   document.getElementById("btn-start").onclick = startSession;
+  document.getElementById("btn-wrongnote").onclick = startReviewSession;
   document.getElementById("btn-reveal").onclick = reveal;
   document.getElementById("btn-correct").onclick = () => judge(true);
   document.getElementById("btn-wrong").onclick = () => judge(false);
   document.getElementById("btn-quit").onclick = () => {
-    if (confirm("학습을 중단할까요? (지금까지 채점한 기록은 저장됩니다)")) show("setup");
+    if (confirm("학습을 중단할까요? (지금까지 채점한 기록은 저장됩니다)")) {
+      updateWrongCount(); show("setup");
+    }
   };
-  document.getElementById("btn-again").onclick = () => { show("setup"); updatePoolCount(); };
-  document.getElementById("nav-setup").onclick = () => { show("setup"); updatePoolCount(); };
+  document.getElementById("btn-again").onclick = () => { show("setup"); updatePoolCount(); updateWrongCount(); };
+  document.getElementById("nav-setup").onclick = () => { show("setup"); updatePoolCount(); updateWrongCount(); };
   document.getElementById("nav-stats").onclick = () => { renderStats(); show("stats"); };
   document.getElementById("btn-reset").onclick = () => {
     if (confirm("모든 학습 기록을 삭제할까요? 되돌릴 수 없습니다.")) {
       localStorage.removeItem(LS_KEY);
-      renderStats();
+      renderStats(); updateWrongCount();
     }
   };
+  updateWrongCount();
 }
 
 init();
