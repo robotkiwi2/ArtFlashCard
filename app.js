@@ -194,11 +194,15 @@ function buildChips(containerId, key, values) {
   });
 }
 
+// 현재 과목 범위에서 선택 가능한 전체 값 (전부 선택 여부 판정에 사용)
+let allValues = { 유형: [], 시대: [], 태그: [], 중요도: [] };
+
 // 과목 변경 시: 하위 칩을 다시 그리고 기본값으로 전부 선택한다.
 function rebuildDependentChips() {
   const pool = subjectPool();
   DEP_KEYS.forEach(([key, id]) => {
     const values = uniqueValues(key, pool);
+    allValues[key] = values;
     filters[key] = new Set(values);   // 디폴트 전체 선택
     buildChips(id, key, values);
   });
@@ -210,14 +214,18 @@ function getMode() {
 
 function filteredPool() {
   const mode = getMode();
+  // 값이 비어 있는 카드(시대 없음·태그 없음)는 해당 축을 전부 선택해 둔 동안에만 통과시킨다.
+  // 일부만 골라 범위를 좁혔다면 분류 불가능한 카드로 보고 제외한다.
+  const eraNarrowed = filters.시대.size < allValues.시대.length;
+  const tagNarrowed = filters.태그.size < allValues.태그.length;
   return subjectPool().filter(c => {
     if (mode === "image" && !c.이미지링크) return false;
     if (!filters.유형.has(c.유형)) return false;
     if (!filters.중요도.has(c.중요도)) return false;
-    // 시대: 값이 없는 카드는 시대 필터를 적용하지 않음
-    if (c.시대 && !filters.시대.has(c.시대)) return false;
-    // 태그: 태그가 없는 카드는 통과, 있으면 하나라도 선택돼 있어야 함
-    if (c.태그목록.length && !c.태그목록.some(t => filters.태그.has(t))) return false;
+    if (c.시대) { if (!filters.시대.has(c.시대)) return false; }
+    else if (eraNarrowed) return false;
+    if (c.태그목록.length) { if (!c.태그목록.some(t => filters.태그.has(t))) return false; }
+    else if (tagNarrowed) return false;
     return true;
   });
 }
