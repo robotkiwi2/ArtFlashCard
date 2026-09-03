@@ -9,3 +9,9 @@ __test.html
 
 # 원본 업로드 파일 (cards.csv로 병합 반영됨)
 data/cards-v2.csv
+
+# 작업 중 스냅숏 (복구 지점은 git 히스토리로 충분하다)
+data/cards.backup-*.csv
+
+# 검증용 임시 페이지
+_*.html

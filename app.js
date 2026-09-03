@@ -2,6 +2,7 @@
 
 // ===== 상태 =====
 let CARDS = [];                 // 전체 카드
+let LINKS = new Map();          // 표제어 → 관계 목록 (data/links.csv)
 let selectedSubject = "";       // "" = 전체 과목 (단일 선택)
 let filters = { 유형: new Set(), 시대: new Set(), 태그: new Set(), 중요도: new Set() };
 let session = null;             // { queue, idx, mode, correct, wrongCards }
@@ -59,6 +60,54 @@ async function loadCards() {
     o.태그목록 = o.태그 ? o.태그.split(";").map(t => t.trim()).filter(Boolean) : [];
     return o;
   });
+}
+
+// ===== 관계 (data/links.csv) =====
+// 카드에 관계를 심지 않고 별도 테이블로 둔다. 관계 종류가 늘어도 카드 스키마는 그대로다.
+// 한 행이 양방향으로 동작한다. 아래 사전이 역방향에서 붙일 이름을 정한다.
+const REL_REVERSE = {
+  "관련": "관련",      // 대칭
+  "대비": "대비",      // 대칭
+  "상위": "하위",
+  "계보": "선행",
+  "영향": "영향받음",
+  "작품": "작가",
+  "기법": "사용례",
+  "주장": "주창자",
+  "대표작가": "사조",
+  "도구": "쓰임",
+  "대표작품": "사조",
+};
+
+async function loadLinks() {
+  LINKS = new Map();   // 표제어 → [{ rel, other, memo }]
+  let text;
+  try {
+    const res = await fetch("data/links.csv");
+    if (!res.ok) return;
+    text = await res.text();
+  } catch { return; }
+
+  const rows = parseCSV(text);
+  const names = new Set(CARDS.map(c => c.표제어));
+  const missing = [];
+  const push = (key, rel, other, memo) => {
+    if (!LINKS.has(key)) LINKS.set(key, []);
+    LINKS.get(key).push({ rel, other, memo });
+  };
+
+  rows.slice(1).forEach(r => {
+    const [from, rel, to, memo] = [0, 1, 2, 3].map(i => (r[i] || "").trim());
+    if (!from || !rel || !to) return;
+    // 참조 무결성: 카드가 없는 표제어는 버리고 경고만 남긴다
+    if (!names.has(from)) { missing.push(from); return; }
+    if (!names.has(to)) { missing.push(to); return; }
+    push(from, rel, to, memo);
+    push(to, REL_REVERSE[rel] || rel, from, memo);
+  });
+  if (missing.length) {
+    console.warn("[links] 카드에 없는 표제어 참조:", [...new Set(missing)]);
+  }
 }
 
 // ===== 학습 기록 (localStorage) =====
@@ -331,21 +380,220 @@ function termTag(c) {
   return `<div class="term">${c.표제어}</div>${v}`;
 }
 
+// 축1~축4 = 이 카드가 물릴 수 있는 출제 각도. 빈 축은 건너뛴다.
+// 각 축은 "라벨: 내용" 형식이며, 라벨이 없으면 본문만 표시한다.
+function axisList(c) {
+  return ["축1", "축2", "축3", "축4"]
+    .map(k => (c[k] || "").trim())
+    .filter(Boolean);
+}
+
+function axisHtml(list) {
+  return list.map(t => {
+    const i = t.indexOf(":");
+    if (i > 0 && i <= 12) {
+      return `<div class="axis"><span class="axis-label">${t.slice(0, i).trim()}</span>` +
+             `<span>${t.slice(i + 1).trim()}</span></div>`;
+    }
+    return `<div class="desc">${t}</div>`;
+  }).join("");
+}
+
+// 작품 카드의 캡션(작가·제목·연도). 시험은 이 정보를 주고 특징을 묻는다.
+function capTag(c) {
+  return c.캡션 ? `<div class="caption">${c.캡션}</div>` : "";
+}
+
+// 같은 태그를 공유하는 형제 카드. 태그가 이미 갈래를 담고 있으므로 별도 데이터 없이 나온다.
+// 너무 넓은 태그(형제라 보기 어려운 것)는 제외한다.
+const SIB_MAX = 8;
+function siblings(c) {
+  const out = [];
+  c.태그목록.forEach(t => {
+    const mates = CARDS.filter(x => x.id !== c.id && x.태그목록.includes(t));
+    if (mates.length >= 1 && mates.length <= SIB_MAX) {
+      out.push({ tag: t, names: mates.map(x => x.표제어) });
+    }
+  });
+  return out;
+}
+
+// 관계 테이블(data/links.csv)에서 온 연결. 방향에 따라 이름이 뒤집혀 표시된다.
+function relations(c) {
+  return LINKS.get(c.표제어) || [];
+}
+
+// '상위'를 따라 뿌리까지 올라간 갈래 경로. 예: 로커 → [판화, 오목판화]
+function ancestorPath(name) {
+  if (typeof name !== "string") name = name.표제어;
+  const up = [];
+  const seen = new Set([name]);
+  let cur = name;
+  while (up.length < 6) {
+    const p = (LINKS.get(cur) || []).find(r => r.rel === "상위");
+    if (!p || seen.has(p.other)) break;
+    up.push(p.other); seen.add(p.other); cur = p.other;
+  }
+  return up.reverse();          // 뿌리 → 바로 위 순서
+}
+
+// 어떤 카드의 바로 아래 자식들
+function childrenOf(name) {
+  return (LINKS.get(name) || []).filter(r => r.rel === "하위").map(r => r.other);
+}
+
+// 뒷면 하단의 접이식 '더 보기'. 회전 중에는 접혀 있어 흐름을 방해하지 않는다.
+function exploreTag(c) {
+  const rel = relations(c);
+
+  // 같은 종류의 관계는 한 줄로 묶는다 (상위 6줄 → 상위 1줄)
+  const byRel = new Map();
+  rel.forEach(r => {
+    if (!byRel.has(r.rel)) byRel.set(r.rel, []);
+    byRel.get(r.rel).push(r);
+  });
+
+  // 이미 관계로 이어진 카드는 태그 형제에서 뺀다 (중복 방지)
+  const linked = new Set(rel.map(r => r.other));
+  const seenSib = new Set();
+  const sib = siblings(c)
+    .map(g => ({ tag: g.tag, names: g.names.filter(n => !linked.has(n)) }))
+    // 앞선 태그가 이미 보여 준 이름은 뺀다. 태그가 겹쳐 같은 목록이 되풀이되는 것을 막는다.
+    .map(g => {
+      const names = g.names.filter(n => !seenSib.has(n));
+      names.forEach(n => seenSib.add(n));
+      return { tag: g.tag, names };
+    })
+    .filter(g => g.names.length);
+
+  // 표제어는 버튼으로 만들어, 누르면 그 카드를 미리보기로 띄운다
+  const chip = n => `<button type="button" class="link-card" data-name="${n}">${n}</button>`;
+
+  // 상위 사슬을 끝까지 따라 올라간 갈래 경로와, 부모의 다른 자식(곁갈래)
+  const path = ancestorPath(c);
+  const aside = path.length ? childrenOf(path[path.length - 1])
+                              .filter(n => n !== c.표제어 && !path.includes(n)) : [];
+  let head = "";
+  if (path.length) {
+    head += `<div class="rel-row"><span class="rel-kind">갈래</span>` +
+            path.map(chip).join(`<span class="crumb">›</span>`) + `</div>`;
+  }
+  if (aside.length) {
+    head += `<div class="rel-row"><span class="rel-kind">곁갈래</span>` +
+            aside.map(chip).join("") + `</div>`;
+  }
+  // 경로·곁갈래로 이미 보여 준 카드는 아래에서 다시 보여 주지 않는다
+  const shown = new Set([...path, ...aside]);
+  aside.forEach(n => seenSib.add(n));
+  byRel.forEach((list, kind) => {
+    const kept = list.filter(r => !(kind === "상위" && shown.has(r.other)));
+    if (kept.length) byRel.set(kind, kept); else byRel.delete(kind);
+  });
+
+  if (!head && !byRel.size && !sib.length) return "";
+
+  let body = head;
+  byRel.forEach((list, kind) => {
+    const items = list.map(r =>
+      chip(r.other) + (r.memo ? `<span class="rel-memo">${r.memo}</span>` : "")).join("");
+    body += `<div class="rel-row"><span class="rel-kind">${kind}</span>${items}</div>`;
+  });
+  sib.forEach(g => {
+    body += `<div class="sib-row"><span class="sib-tag">${g.tag}</span>` +
+            g.names.map(chip).join("") + `</div>`;
+  });
+  return `<div class="explore"><div class="explore-body">${body}</div></div>`;
+}
+
+// ===== 관련 항목 미리보기 =====
+// 회전 중에 다른 카드를 잠깐 들여다보기 위한 겹침 화면.
+// 세션 큐와 채점에는 전혀 영향을 주지 않으며, 닫으면 원래 카드로 돌아온다.
+let peekStack = [];
+
+function cardByName(name) {
+  return CARDS.find(c => c.표제어 === name);
+}
+
+function ensurePeek() {
+  let el = document.getElementById("peek");
+  if (el) return el;
+  el = document.createElement("div");
+  el.id = "peek";
+  el.className = "peek hidden";
+  el.innerHTML =
+    `<div class="peek-box">
+       <div class="peek-bar">
+         <button type="button" id="peek-back" class="ghost">← 뒤로</button>
+         <span id="peek-path" class="peek-path"></span>
+         <button type="button" id="peek-close" class="ghost">닫기 ✕</button>
+       </div>
+       <div id="peek-body" class="card-face"></div>
+     </div>`;
+  document.body.appendChild(el);
+  el.onclick = e => { if (e.target === el) closePeek(); };          // 바깥 클릭
+  el.querySelector("#peek-close").onclick = closePeek;
+  el.querySelector("#peek-back").onclick = () => {
+    peekStack.pop();
+    peekStack.length ? renderPeek() : closePeek();
+    playClick();
+  };
+  return el;
+}
+
+function renderPeek() {
+  const c = peekStack[peekStack.length - 1];
+  const el = ensurePeek();
+  el.classList.remove("hidden");
+  el.querySelector("#peek-back").style.visibility = peekStack.length > 1 ? "" : "hidden";
+  el.querySelector("#peek-path").textContent = peekStack.map(x => x.표제어).join(" › ");
+  el.querySelector("#peek-body").innerHTML =
+    termTag(c) +
+    `<div class="meta">${c.과목} · ${c.유형}${c.시대 ? " · " + c.시대 : ""}</div>` +
+    capTag(c) + axisHtml(axisList(c)) + imgTag(c) + srcTag(c) + exploreTag(c);
+  el.querySelector(".peek-box").scrollTop = 0;
+}
+
+function openPeek(name) {
+  const c = cardByName(name);
+  if (!c) return;
+  peekStack.push(c);
+  renderPeek();
+  playClick();
+}
+
+function closePeek() {
+  peekStack = [];
+  const el = document.getElementById("peek");
+  if (el) el.classList.add("hidden");
+}
+
+// 기출 출처(연도+과목+문항). 개수가 곧 빈출도다.
+function srcTag(c) {
+  const s = (c.출처 || "").split(";").map(x => x.trim()).filter(Boolean);
+  return s.length ? `<div class="src">기출 ${s.length}회 · ${s.join(", ")}</div>` : "";
+}
+
 function renderCard() {
   const c = session.queue[session.idx];
   const front = document.getElementById("card-front");
   const back = document.getElementById("card-back");
-  const meta = `<div class="meta">${c.과목} · ${c.유형}${c.시대 ? " · " + c.시대 : ""} · 중요도 ${c.중요도}</div>`;
+  const ax = axisList(c);
+  // 앞면에는 시대를 넣지 않는다 (답을 흘리게 된다). 시대는 뒷면에서 보여 준다.
+  const metaFront = `<div class="meta">${c.과목} · ${c.유형} · 중요도 ${c.중요도}</div>`;
+  const metaBack = c.시대 ? `<div class="meta">${c.시대}</div>` : "";
+  const extra = srcTag(c) + metaBack + exploreTag(c);
 
   if (session.mode === "term") {
-    front.innerHTML = termTag(c) + meta;
-    back.innerHTML = `<div class="desc">${c.설명}</div>` + imgTag(c);
+    front.innerHTML = termTag(c) + metaFront;
+    back.innerHTML = capTag(c) + axisHtml(ax) + imgTag(c) + extra;
   } else if (session.mode === "desc") {
-    front.innerHTML = `<div class="desc">${c.설명}</div>` + meta;
-    back.innerHTML = termTag(c) + imgTag(c);
+    // 첫 축만 제시하고 표제어를 인출한다. 나머지 축은 답과 함께 공개.
+    front.innerHTML = axisHtml(ax.slice(0, 1)) + metaFront;
+    back.innerHTML = termTag(c) + capTag(c) + axisHtml(ax.slice(1)) + imgTag(c) + extra;
   } else { // image
-    front.innerHTML = imgTag(c) + meta;
-    back.innerHTML = termTag(c) + `<div class="desc">${c.설명}</div>`;
+    // 도판(+캡션)을 주고 기법·사조 등 특징을 인출한다.
+    front.innerHTML = imgTag(c) + capTag(c) + metaFront;
+    back.innerHTML = termTag(c) + axisHtml(ax) + extra;
   }
   back.classList.add("hidden");
   document.getElementById("btn-reveal").classList.remove("hidden");
@@ -444,6 +692,12 @@ async function init() {
   applyFontScale(loadFontScale());   // 저장된 글자 크기를 먼저 반영
   buildFontChips();
   await loadCards();
+  await loadLinks();
+  document.addEventListener("click", e => {
+    const b = e.target.closest && e.target.closest(".link-card");
+    if (b) { e.preventDefault(); openPeek(b.dataset.name); }
+  });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closePeek(); });
   buildSubjectChips();
   rebuildDependentChips();     // 유형·시대·태그·중요도 전체 선택 상태로 시작
   updatePoolCount();
