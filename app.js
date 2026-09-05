@@ -667,7 +667,72 @@ function renderStatsTable(tableId, entries) {
   el.innerHTML = html;
 }
 
+// 전체 진도: 카드 몇 장을 건드렸는지(커버리지)와 몇 번 맞고 틀렸는지(채점)를 함께 본다.
+// 표들이 '시도 횟수' 기준이라 '전체 809장 중 어디까지 왔는지'가 드러나지 않아 따로 둔다.
+const OV_BUCKETS = [
+  { key: "done",     label: "완료",      color: "#1e8e4e", hint: "5회 연속 정답" },
+  { key: "familiar", label: "거의 외움",  color: "#6cbf7a", hint: "3~4회 연속 정답" },
+  { key: "learning", label: "익히는 중",  color: "#d9932c", hint: "1~2회 연속 정답" },
+  { key: "wrong",    label: "오답",      color: "#c0392b", hint: "마지막에 틀림" },
+  { key: "new",      label: "미학습",     color: "#c3c8cf", hint: "아직 안 본 카드" },
+];
+
+function renderOverview() {
+  const stats = loadStats();
+  const total = CARDS.length;
+  const b = { done: 0, familiar: 0, learning: 0, wrong: 0, new: 0 };
+  let seen = 0, tries = 0, correct = 0;
+
+  CARDS.forEach(c => {
+    const s = stats[c.id];
+    if (!s) { b.new++; return; }
+    seen++; tries += s.tries; correct += s.correct;
+    const box = s.box || 0;
+    if (s.wrong) b.wrong++;
+    else if (box >= 5) b.done++;
+    else if (box >= 3) b.familiar++;
+    else b.learning++;
+  });
+
+  const wrong = tries - correct;
+  const pct = tries ? Math.round(correct / tries * 100) : 0;
+  const seenPct = total ? Math.round(seen / total * 100) : 0;
+
+  // 단위만 숫자 옆에 붙이고 긴 보조 문구는 아랫줄로 내린다.
+  // 그래야 칸의 최소 너비가 작아져 좁은 화면에서도 그리드가 접힌다.
+  const nums = `
+    <div class="ov-nums">
+      <div class="ov-num"><div class="k">학습한 카드</div>
+        <div class="v">${seen}<small>장</small></div>
+        <div class="sub">${total}장 중 ${seenPct}%</div></div>
+      <div class="ov-num"><div class="k">아직 안 본 카드</div>
+        <div class="v">${b.new}<small>장</small></div></div>
+      <div class="ov-num ok"><div class="k">맞힘</div>
+        <div class="v">${correct}<small>회</small></div></div>
+      <div class="ov-num no"><div class="k">틀림</div>
+        <div class="v">${wrong}<small>회</small></div></div>
+      <div class="ov-num"><div class="k">누적 정답률</div>
+        <div class="v">${pct}<small>%</small></div></div>
+    </div>`;
+
+  const seg = OV_BUCKETS
+    .filter(x => b[x.key] > 0)
+    .map(x => `<i style="width:${b[x.key] / total * 100}%;background:${x.color}"
+                  title="${x.label} ${b[x.key]}장"></i>`).join("");
+  const legend = OV_BUCKETS
+    .map(x => `<span><b style="background:${x.color}"></b>${x.label} ${b[x.key]}장</span>`)
+    .join("");
+
+  document.getElementById("stats-overview").innerHTML =
+    nums +
+    `<div class="stack">${seg}</div>` +
+    `<div class="legend">${legend}</div>` +
+    `<div class="ov-note">막대는 카드 ${total}장을 숙련도로 나눈 것입니다. ` +
+    `맞히면 한 칸 오르고 틀리면 처음으로 돌아갑니다.</div>`;
+}
+
 function renderStats() {
+  renderOverview();
   renderStatsTable("stats-subject", aggregate(c => [c.과목]));
   renderStatsTable("stats-type", aggregate(c => [c.유형]));
   renderStatsTable("stats-tag", aggregate(c => c.태그목록));
