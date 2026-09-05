@@ -139,17 +139,26 @@ function wrongCards() {
   return CARDS.filter(c => stats[c.id] && stats[c.id].wrong);
 }
 
-// 출제 가중치: 미학습 > 오답 > 맞힌 지 얼마 안 된 카드 순으로 높다.
+// 출제 가중치. 우선순위는 안 본 카드 > 오답 > 맞힌 카드 순이다.
+// 안 본 카드가 남아 있는 동안에는 그쪽이 확실히 먼저 나오도록 기본값을 크게 벌려 두었다.
+// (예전에는 안 본 카드가 8 고정인데 맞힌 카드가 방치 보정으로 12까지 올라가
+//  안 본 카드를 앞지르는 일이 있었다.)
+// 오답만 몰아서 풀고 싶을 때는 '오답 노트' 모드가 따로 있다.
+const W_NEW      = 60;   // 아직 안 본 카드
+const W_WRONG    = 18;   // 마지막에 틀린 카드
+const W_SEEN     = 6;    // 맞힌 카드의 출발점 (연속 정답마다 절반으로 줄어든다)
+const W_SEEN_CAP = 12;   // 오래 묵어도 안 본 카드를 앞지르지 못하게 하는 상한
+
 function cardWeight(c, stats) {
   const s = stats[c.id];
-  if (!s) return 8;                                   // 아직 안 본 카드 최우선
-  let w = 8 / Math.pow(2, Math.min(s.box || 0, 5));   // 연속 정답마다 절반씩 감소
-  if (s.wrong) w *= 2;                                // 오답 상태면 두 배
+  if (!s) return W_NEW;                               // 안 본 카드 최우선
   const days = s.last
     ? Math.max(0, (Date.now() - new Date(s.last).getTime()) / 86400000)
     : 0;
-  w *= 1 + Math.min(days, 30) / 15;                   // 오래 방치될수록 최대 3배까지 회복
-  return w;
+  const rest = 1 + Math.min(days, 30) / 15;           // 방치될수록 최대 3배까지 회복
+  if (s.wrong) return W_WRONG * rest;                 // 오답은 그다음
+  const w = W_SEEN / Math.pow(2, Math.min(s.box || 0, 5)) * rest;
+  return Math.min(w, W_SEEN_CAP);                     // 맞힌 카드는 뒤로
 }
 
 // 가중치를 반영한 비복원 추출
