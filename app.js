@@ -600,9 +600,11 @@ function renderCard() {
     front.innerHTML = axisHtml(ax.slice(0, 1)) + metaFront;
     back.innerHTML = termTag(c) + capTag(c) + axisHtml(ax.slice(1)) + imgTag(c) + extra;
   } else { // image
-    // 도판(+캡션)을 주고 기법·사조 등 특징을 인출한다.
-    front.innerHTML = imgTag(c) + capTag(c) + metaFront;
-    back.innerHTML = termTag(c) + axisHtml(ax) + extra;
+    // 도판만 주고 표제어를 인출한다.
+    // 캡션에는 대개 작가와 작품명이 적혀 있어(예: "정선, 〈금강전도〉, 1734")
+    // 앞면에 두면 그대로 답이 된다. 캡션은 뒷면에서 공개한다.
+    front.innerHTML = imgTag(c) + metaFront;
+    back.innerHTML = termTag(c) + capTag(c) + axisHtml(ax) + extra;
   }
   back.classList.add("hidden");
   document.getElementById("btn-reveal").classList.remove("hidden");
