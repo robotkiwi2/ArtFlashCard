@@ -124,13 +124,15 @@ function loadStats() {
 }
 // box = 연속 정답 횟수(0~5). 맞히면 오르고 틀리면 0으로 초기화된다.
 // wrong = 오답 노트 수록 여부. 틀리면 true·맞히면 false.
-function saveResult(cardId, isCorrect) {
+// hintUsed = 힌트(글자 수·초성)를 보고 맞힌 경우. 완전한 인출이 아니므로 box를 올리지 않아
+// 복습 주기를 짧게 유지한다(오답으로 되돌리지는 않는다).
+function saveResult(cardId, isCorrect, hintUsed) {
   const stats = loadStats();
   const s = stats[cardId] || { tries: 0, correct: 0, box: 0 };
   s.tries++;
   if (isCorrect) {
     s.correct++;
-    s.box = Math.min((s.box || 0) + 1, 5);
+    if (!hintUsed) s.box = Math.min((s.box || 0) + 1, 5);
     s.wrong = false;
   } else {
     s.box = 0;
@@ -765,6 +767,33 @@ function srcTag(c) {
   return s.length ? `<div class="src">기출 ${s.length}회 · ${s.join(", ")}</div>` : "";
 }
 
+// ===== 힌트 (표제어를 인출해야 하는 모드에서만: 설명 제시·이미지 제시) =====
+// 1단계: 글자 수 → 2단계: 초성. 완전히 막혔을 때 인출을 포기하지 않도록 돕는 최소 단서.
+const CHOSEONG = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
+function choseongOf(ch) {
+  const code = ch.charCodeAt(0) - 0xac00;
+  return (code >= 0 && code <= 11171) ? CHOSEONG[Math.floor(code / 588)] : ch;
+}
+function hintUsesTerm(mode) { return mode === "desc" || mode === "image"; }
+function hintCharCount(term) { return [...term].filter(ch => ch !== " ").length; }
+function hintInitials(term) { return [...term].map(ch => (ch === " " ? " " : choseongOf(ch))).join(""); }
+function updateHintUI() {
+  const btn = document.getElementById("btn-hint");
+  const line = document.getElementById("hint-line");
+  if (!btn || !line) return;
+  const c = session.queue[session.idx];
+  if (session.hintLevel === 0) { line.textContent = ""; btn.textContent = "힌트"; btn.disabled = false; }
+  else if (session.hintLevel === 1) { line.textContent = `${hintCharCount(c.표제어)}자`; btn.textContent = "힌트 (초성)"; btn.disabled = false; }
+  else { line.textContent = hintInitials(c.표제어); btn.textContent = "힌트 완료"; btn.disabled = true; }
+}
+function useHint() {
+  if (session.hintLevel >= 2) return;
+  session.hintLevel++;
+  session.hintUsed = true;
+  updateHintUI();
+  playClick();
+}
+
 function renderCard() {
   const c = session.queue[session.idx];
   const front = document.getElementById("card-front");
@@ -774,24 +803,31 @@ function renderCard() {
   const metaFront = `<div class="meta">${c.과목} · ${c.유형} · 중요도 ${c.중요도}</div>`;
   const metaBack = c.시대 ? `<div class="meta">${c.시대}</div>` : "";
   const extra = srcTag(c) + metaBack + exploreTag(c);
+  const hintLine = `<div class="hint-line" id="hint-line"></div>`;
+
+  session.hintLevel = 0;
+  session.hintUsed = false;
 
   if (session.mode === "term") {
     front.innerHTML = termTag(c) + metaFront;
     back.innerHTML = capTag(c) + axisHtml(ax) + imgTag(c) + extra;
   } else if (session.mode === "desc") {
     // 첫 축만 제시하고 표제어를 인출한다. 나머지 축은 답과 함께 공개.
-    front.innerHTML = axisHtml(ax.slice(0, 1)) + metaFront;
+    front.innerHTML = axisHtml(ax.slice(0, 1)) + hintLine + metaFront;
     back.innerHTML = termTag(c) + capTag(c) + axisHtml(ax.slice(1)) + imgTag(c) + extra;
   } else { // image
     // 도판만 주고 표제어를 인출한다.
     // 캡션에는 대개 작가와 작품명이 적혀 있어(예: "정선, 〈금강전도〉, 1734")
     // 앞면에 두면 그대로 답이 된다. 캡션은 뒷면에서 공개한다.
-    front.innerHTML = imgTag(c) + metaFront;
+    front.innerHTML = imgTag(c) + hintLine + metaFront;
     back.innerHTML = termTag(c) + capTag(c) + axisHtml(ax) + extra;
   }
   back.classList.add("hidden");
   document.getElementById("btn-reveal").classList.remove("hidden");
   document.getElementById("judge-buttons").classList.add("hidden");
+  const hintBtn = document.getElementById("btn-hint");
+  if (hintBtn) hintBtn.classList.toggle("hidden", !hintUsesTerm(session.mode));
+  updateHintUI();
   document.getElementById("quiz-progress").textContent =
     `${session.isReview ? "오답 노트 · " : ""}${session.idx + 1} / ${session.queue.length}`;
 }
@@ -799,12 +835,13 @@ function renderCard() {
 function reveal() {
   document.getElementById("card-back").classList.remove("hidden");
   document.getElementById("btn-reveal").classList.add("hidden");
+  document.getElementById("btn-hint").classList.add("hidden");
   document.getElementById("judge-buttons").classList.remove("hidden");
 }
 
 function judge(isCorrect) {
   const c = session.queue[session.idx];
-  saveResult(c.id, isCorrect);
+  saveResult(c.id, isCorrect, session.hintUsed);
   if (isCorrect) session.correct++;
   else session.wrongCards.push(c);
   session.idx++;
@@ -986,6 +1023,7 @@ async function init() {
   document.getElementById("btn-start").onclick = startSession;
   document.getElementById("btn-wrongnote").onclick = startReviewSession;
   document.getElementById("btn-reveal").onclick = reveal;
+  document.getElementById("btn-hint").onclick = useHint;
   document.getElementById("btn-correct").onclick = () => judge(true);
   document.getElementById("btn-wrong").onclick = () => judge(false);
   document.getElementById("btn-quit").onclick = () => {

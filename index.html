@@ -11,7 +11,7 @@
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
-<link rel="stylesheet" href="style.css?v=a0e6ba2e">
+<link rel="stylesheet" href="style.css?v=4775d52d">
 </head>
 <body>
 <header>
@@ -92,6 +92,7 @@
     <div id="card-back" class="card-face hidden"></div>
   </div>
   <div class="quiz-controls">
+    <button id="btn-hint" class="ghost big hidden">힌트</button>
     <button id="btn-reveal" class="primary big">답 보기</button>
     <div id="judge-buttons" class="hidden">
       <button id="btn-correct" class="correct big">⭕ 맞음</button>
@@ -137,6 +138,6 @@
   </div>
 </section>
 
-<script src="app.js?v=0e1ded08"></script>
+<script src="app.js?v=d2fb91f5"></script>
 </body>
 </html>

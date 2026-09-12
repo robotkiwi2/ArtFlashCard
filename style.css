@@ -281,6 +281,8 @@ button:disabled:active { transform: none; }
   :root:not([data-theme="light"]) .card-face img { background: #fff; padding: 8px; }
 }
 .card-face .meta { margin-top: 10px; font-size: 0.8rem; color: var(--meta-fg); }
+.card-face .hint-line { margin-top: 10px; font-size: calc(var(--fs) * 1.1rem); font-weight: bold;
+                        letter-spacing: 0.15em; color: var(--brand); min-height: 1.3em; }
 
 /* 축(출제 각도) — "라벨: 내용" 형식 */
 .card-face .axis { font-size: calc(var(--fs) * 0.98rem); line-height: 1.75; text-align: left;
@@ -335,6 +337,7 @@ button:disabled:active { transform: none; }
 #card-back { border-top: 2px dashed var(--dashed); padding-top: 16px; }
 
 .quiz-controls { text-align: center; }
+.quiz-controls > button { margin: 0 6px; }
 #judge-buttons { display: flex; justify-content: center; gap: 14px; }
 
 .result-big { font-size: 1.5rem; margin: 14px 0; }
