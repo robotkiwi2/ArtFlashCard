@@ -129,7 +129,7 @@ function saveResult(cardId, isCorrect) {
     s.box = 0;
     s.wrong = true;
   }
-  s.last = new Date().toISOString().slice(0, 10);
+  s.last = new Date().toISOString();   // 같은 날 안에서도 순서를 가리려면 초 단위가 필요하다
   stats[cardId] = s;
   try { localStorage.setItem(LS_KEY, JSON.stringify(stats)); } catch {}
 }
@@ -139,26 +139,49 @@ function wrongCards() {
   return CARDS.filter(c => stats[c.id] && stats[c.id].wrong);
 }
 
-// 출제 가중치. 우선순위는 안 본 카드 > 오답 > 맞힌 카드 순이다.
-// 안 본 카드가 남아 있는 동안에는 그쪽이 확실히 먼저 나오도록 기본값을 크게 벌려 두었다.
-// (예전에는 안 본 카드가 8 고정인데 맞힌 카드가 방치 보정으로 12까지 올라가
-//  안 본 카드를 앞지르는 일이 있었다.)
-// 오답만 몰아서 풀고 싶을 때는 '오답 노트' 모드가 따로 있다.
-const W_NEW      = 60;   // 아직 안 본 카드
-const W_WRONG    = 18;   // 마지막에 틀린 카드
-const W_SEEN     = 6;    // 맞힌 카드의 출발점 (연속 정답마다 절반으로 줄어든다)
-const W_SEEN_CAP = 12;   // 오래 묵어도 안 본 카드를 앞지르지 못하게 하는 상한
+// 출제 가중치. 안 본 카드가 가장 앞이고, 본 카드는 오래 안 나왔을수록 앞이다.
+// 오답과 정답을 여기서 가르지 않는다 — 오답의 비율은 buildQueue 가 따로 묶어 정한다.
+// (예전에는 오답 가중치가 맞힌 카드의 몇 배라, 안 본 카드가 떨어지면 같은 오답만
+//  세션마다 되돌아왔다. 또 마지막 학습을 날짜로만 저장해 같은 날 안에서는
+//  방금 본 카드와 아침에 본 카드를 구분하지 못했다.)
+const W_NEW = 1000;          // 안 본 카드
+const WRONG_SHARE = 0.4;     // 한 세션에서 오답 카드가 차지할 수 있는 최대 비율
+
+function hoursSince(s) {
+  if (!s || !s.last) return Infinity;
+  const t = new Date(s.last).getTime();
+  return isNaN(t) ? Infinity : Math.max(0, (Date.now() - t) / 3600000);
+}
 
 function cardWeight(c, stats) {
   const s = stats[c.id];
-  if (!s) return W_NEW;                               // 안 본 카드 최우선
-  const days = s.last
-    ? Math.max(0, (Date.now() - new Date(s.last).getTime()) / 86400000)
-    : 0;
-  const rest = 1 + Math.min(days, 30) / 15;           // 방치될수록 최대 3배까지 회복
-  if (s.wrong) return W_WRONG * rest;                 // 오답은 그다음
-  const w = W_SEEN / Math.pow(2, Math.min(s.box || 0, 5)) * rest;
-  return Math.min(w, W_SEEN_CAP);                     // 맞힌 카드는 뒤로
+  if (!s) return W_NEW;
+  const h = hoursSince(s);
+  let w = 1 + h / 6;                       // 6시간마다 1씩 — 하루 5, 일주일 29, 한 달 121
+  w /= 1 + (s.box || 0) * 0.25;            // 연속 정답이 쌓인 카드는 조금 덜 (box5 → 0.44배)
+  return w;
+}
+
+// 한 세션의 출제 목록. 오답은 정해진 비율까지만 넣고, 나머지는 안 본 카드와
+// 오래 안 나온 카드로 채운다. 오답만 몰아 풀려면 오답 노트 모드를 쓴다.
+function buildQueue(pool, n) {
+  const stats = loadStats();
+  const wrongPool = pool.filter(c => stats[c.id] && stats[c.id].wrong);
+  const restPool  = pool.filter(c => !(stats[c.id] && stats[c.id].wrong));
+
+  const quota = Math.min(wrongPool.length, Math.floor(n * WRONG_SHARE));
+  const picks = weightedSample(restPool, n - quota);
+  const taken = new Set(picks.map(c => c.id));
+  // 나머지 풀이 모자라면(범위 안이 거의 다 오답이면) 오답으로 채운다
+  const need = n - picks.length;
+  const fromWrong = weightedSample(wrongPool, Math.max(quota, need));
+  fromWrong.forEach(c => { if (picks.length < n && !taken.has(c.id)) picks.push(c); });
+
+  for (let i = picks.length - 1; i > 0; i--) {   // 오답이 한쪽에 몰리지 않게 섞는다
+    const j = Math.floor(Math.random() * (i + 1));
+    [picks[i], picks[j]] = [picks[j], picks[i]];
+  }
+  return picks;
 }
 
 // 가중치를 반영한 비복원 추출
@@ -349,7 +372,7 @@ function startSession() {
   const pool = filteredPool();
   if (!pool.length) { alert("선택한 범위에 카드가 없습니다."); return; }
   session = {
-    queue: weightedSample(pool, sessionSize(pool.length)),
+    queue: buildQueue(pool, sessionSize(pool.length)),
     idx: 0, mode: getMode(), correct: 0, wrongCards: [], isReview: false,
   };
   show("quiz");
