@@ -4,7 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>임용미술 플래시카드</title>
-<link rel="stylesheet" href="style.css?v=a04b4323">
+<script>
+  // 저장된 테마를 CSS/렌더링 전에 미리 반영해 화면이 잠깐 밝게 번쩍이는 것을 막는다
+  try {
+    var t = localStorage.getItem("flashcard-theme-v1");
+    if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<link rel="stylesheet" href="style.css?v=a0e6ba2e">
 </head>
 <body>
 <header>
@@ -13,6 +20,7 @@
     <button id="nav-setup" class="active">학습 설정</button>
     <button id="nav-stats">성적 관리</button>
   </nav>
+  <div id="theme-toggle" class="chip-group"></div>
 </header>
 
 <!-- ===== 학습 설정 화면 ===== -->
@@ -129,6 +137,6 @@
   </div>
 </section>
 
-<script src="app.js?v=84125798"></script>
+<script src="app.js?v=0e1ded08"></script>
 </body>
 </html>

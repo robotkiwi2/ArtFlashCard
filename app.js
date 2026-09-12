@@ -16,6 +16,13 @@ const FONT_SIZES = [
   { label: "아주 크게", scale: 1.75 },
 ];
 const FS_DEFAULT = 1.2;
+const THEME_KEY = "flashcard-theme-v1";
+const THEME_OPTIONS = [
+  { value: "light",  label: "☀️ 라이트" },
+  { value: "dark",   label: "🌙 다크" },
+  { value: "system", label: "🖥 시스템" },
+];
+const THEME_DEFAULT = "system";
 const DEP_KEYS = [
   ["유형", "filter-type"],
   ["시대", "filter-era"],
@@ -224,6 +231,46 @@ function buildFontChips() {
   });
 }
 
+// ===== 화면 테마 (라이트/다크/시스템) =====
+function loadTheme() {
+  const v = localStorage.getItem(THEME_KEY);
+  return THEME_OPTIONS.some(t => t.value === v) ? v : THEME_DEFAULT;
+}
+function applyTheme(value) {
+  if (value === "light" || value === "dark") {
+    document.documentElement.setAttribute("data-theme", value);
+  } else {
+    document.documentElement.removeAttribute("data-theme");   // 시스템 설정을 따름
+  }
+  try { localStorage.setItem(THEME_KEY, value); } catch {}
+}
+function isDarkNow() {
+  const t = loadTheme();
+  if (t === "dark") return true;
+  if (t === "light") return false;
+  return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+}
+function buildThemeChips() {
+  const el = document.getElementById("theme-toggle");
+  if (!el) return;
+  const cur = loadTheme();
+  el.innerHTML = "";
+  THEME_OPTIONS.forEach(t => {
+    const chip = document.createElement("span");
+    chip.className = "chip" + (t.value === cur ? " on" : "");
+    chip.textContent = t.label;
+    chip.onclick = () => { applyTheme(t.value); buildThemeChips(); };
+    el.appendChild(chip);
+  });
+}
+// 시스템 설정이 바뀌면(다크모드 예약 전환 등) '시스템' 선택 시 즉시 반영
+if (window.matchMedia) {
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const onChange = () => { if (loadTheme() === "system") applyTheme("system"); };
+  if (mq.addEventListener) mq.addEventListener("change", onChange);
+  else if (mq.addListener) mq.addListener(onChange);
+}
+
 // ===== 클릭음 (Web Audio, 외부 파일 없음) =====
 let audioCtx = null;
 function playClick() {
@@ -379,25 +426,36 @@ function cardListHtml(pool) {
         `<li>${esc(c.표제어)}<span class="t">${esc(c.유형)}</span></li>`).join("")}</ol>
     </section>`).join("");
 
+  const dark = isDarkNow();
+  const bg = dark ? "#1a1d23" : "#fff", fg = dark ? "#e4e6ea" : "#222";
+  const scopeFg = dark ? "#9aa0a8" : "#666", hrColor = dark ? "#343841" : "#e3e6ea";
+  const smallFg = dark ? "#767c87" : "#888", tFg = dark ? "#767c87" : "#8a94a6";
+  const closeBg = dark ? "#2a2e36" : "#fff", closeBorder = dark ? "#454a54" : "#c9cfd8";
+  const closeFg = dark ? "#5b8fdb" : "#2b5fb8", closeHoverBg = dark ? "#313847" : "#f0f4fb";
+
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>선택 범위 카드 ${pool.length}장</title>
 <style>
-  body { font-family: "Malgun Gothic", "맑은 고딕", sans-serif; margin: 0; padding: 20px 24px; color: #222; background: #fff; }
+  body { font-family: "Malgun Gothic", "맑은 고딕", sans-serif; margin: 0; padding: 20px 24px; color: ${fg}; background: ${bg}; }
   h1 { font-size: 1.15rem; margin: 0 0 4px; }
-  .scope { color: #666; font-size: 0.88rem; margin-bottom: 18px; }
+  .scope { color: ${scopeFg}; font-size: 0.88rem; margin-bottom: 18px; }
   section { break-inside: avoid; margin-bottom: 18px; }
-  h2 { font-size: 0.98rem; margin: 0 0 6px; padding-bottom: 4px; border-bottom: 1px solid #e3e6ea; }
-  h2 small { color: #888; font-weight: normal; margin-left: 6px; }
+  h2 { font-size: 0.98rem; margin: 0 0 6px; padding-bottom: 4px; border-bottom: 1px solid ${hrColor}; }
+  h2 small { color: ${smallFg}; font-weight: normal; margin-left: 6px; }
   ol { margin: 0; padding-left: 26px; columns: 3; column-gap: 28px; }
   li { font-size: 0.92rem; line-height: 1.55; break-inside: avoid; }
-  .t { font-size: 0.7rem; color: #8a94a6; margin-left: 5px; }
+  .t { font-size: 0.7rem; color: ${tFg}; margin-left: 5px; }
   @media (max-width: 860px) { ol { columns: 2; } }
   @media (max-width: 520px) { ol { columns: 1; } }
-  @media print { body { padding: 0; } ol { columns: 3; } .close { display: none; } }
-  .close { position: fixed; top: 10px; right: 12px; border: 1px solid #c9cfd8; background: #fff;
-           color: #2b5fb8; padding: 6px 14px; border-radius: 8px; font-size: 0.9rem; cursor: pointer; }
-  .close:hover { background: #f0f4fb; }
+  @media print {
+    body { padding: 0; color: #222; background: #fff; }
+    h2 { border-bottom-color: #e3e6ea; } h2 small { color: #888; } .scope { color: #666; } .t { color: #8a94a6; }
+    ol { columns: 3; } .close { display: none; }
+  }
+  .close { position: fixed; top: 10px; right: 12px; border: 1px solid ${closeBorder}; background: ${closeBg};
+           color: ${closeFg}; padding: 6px 14px; border-radius: 8px; font-size: 0.9rem; cursor: pointer; }
+  .close:hover { background: ${closeHoverBg}; }
 </style></head><body>
 <button type="button" class="close" id="close-list">닫기</button>
 <script>
@@ -892,6 +950,8 @@ function renderStats() {
 async function init() {
   applyFontScale(loadFontScale());   // 저장된 글자 크기를 먼저 반영
   buildFontChips();
+  applyTheme(loadTheme());           // 저장된 화면 테마를 반영 (head 인라인 스크립트가 이미 반영했어도 안전하게 재적용)
+  buildThemeChips();
   await loadCards();
   await loadLinks();
   document.addEventListener("click", e => {
