@@ -17,8 +17,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TARGETS = ["app.js", "style.css"]
 
 def digest(path):
+    # 작업 사본은 CRLF, 커밋본은 LF 일 수 있다(autocrlf). LF 로 맞춰 해시해야
+    # 기기와 무관하게 같은 값이 나오고, GitHub 이 실제로 내보내는 파일과도 일치한다.
     with open(path, "rb") as f:
-        return hashlib.sha1(f.read()).hexdigest()[:8]
+        data = f.read().replace(b"\r\n", b"\n")
+    return hashlib.sha1(data).hexdigest()[:8]
 
 def main():
     idx = os.path.join(ROOT, "index.html")
@@ -31,9 +34,9 @@ def main():
                       r'\g<1>%s?v=%s\g<2>' % (name, h), html)
     if html != before:
         io.open(idx, "w", encoding="utf-8", newline="\n").write(html)
-        print("stamp: index.html 갱신")
+        print("stamp: index.html updated")
     else:
-        print("stamp: 변경 없음")
+        print("stamp: no change")
     return 0
 
 if __name__ == "__main__":
