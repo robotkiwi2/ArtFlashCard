@@ -394,8 +394,22 @@ function cardListHtml(pool) {
   .t { font-size: 0.7rem; color: #8a94a6; margin-left: 5px; }
   @media (max-width: 860px) { ol { columns: 2; } }
   @media (max-width: 520px) { ol { columns: 1; } }
-  @media print { body { padding: 0; } ol { columns: 3; } }
+  @media print { body { padding: 0; } ol { columns: 3; } .close { display: none; } }
+  .close { position: fixed; top: 10px; right: 12px; border: 1px solid #c9cfd8; background: #fff;
+           color: #2b5fb8; padding: 6px 14px; border-radius: 8px; font-size: 0.9rem; cursor: pointer; }
+  .close:hover { background: #f0f4fb; }
 </style></head><body>
+<button type="button" class="close" id="close-list">닫기</button>
+<script>
+  // 같은 창 안(iframe)에 떠 있으면 부모가 닫고, 새 창이면 스스로 닫는다.
+  // 홈 화면에 추가한 앱에서는 새 창에 탭 닫기가 없어 이 버튼이 유일한 출구다.
+  const closeBtn = document.getElementById("close-list");
+  if (window.parent !== window) closeBtn.style.display = "none";   // 오버레이에는 바깥에 닫기가 있다
+  closeBtn.onclick = () => {
+    window.close();
+    setTimeout(() => { if (!window.closed) history.back(); }, 250);
+  };
+</script>
 <h1>선택 범위 카드 ${pool.length}장</h1>
 <div class="scope">${esc(scope)}</div>
 ${sections}
@@ -407,6 +421,8 @@ function openCardList() {
   const pool = filteredPool();
   if (!pool.length) return;
   const html = cardListHtml(pool);
+  const standalone = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+  if (standalone || window.innerWidth < 700) { showCardListOverlay(html); return; }
   let win = null;
   try { win = window.open("", "_blank"); } catch { win = null; }
   if (win && win.document) {
@@ -435,6 +451,9 @@ function showCardListOverlay(html) {
   }
   el.querySelector("#listbox-frame").srcdoc = html;
 }
+window.addEventListener("message", e => {
+  if (e.data === "close-listbox") { const el = document.getElementById("listbox"); if (el) el.remove(); }
+});
 
 // ===== 화면 전환 =====
 const screens = ["setup", "quiz", "result", "stats"];
