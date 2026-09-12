@@ -168,3 +168,8 @@ button:disabled:active { transform: none; }
 .legend span { display: flex; align-items: center; gap: 5px; }
 .legend b { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 .ov-note { font-size: 0.8rem; color: #9aa0a8; margin-top: 10px; }
+
+/* 카드 목록을 같은 창 안에 띄울 때 (팝업이 막힌 경우) */
+.listbox-box { width: min(960px, 96vw); height: 88vh; display: flex; flex-direction: column; padding: 0; }
+.listbox-box .peek-bar { padding: 10px 14px; justify-content: space-between; }
+#listbox-frame { flex: 1; border: 0; width: 100%; background: #fff; border-radius: 0 0 12px 12px; }

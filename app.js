@@ -50,7 +50,7 @@ function parseCSV(text) {
 }
 
 async function loadCards() {
-  const res = await fetch("data/cards.csv");
+  const res = await fetch("data/cards.csv", { cache: "no-cache" });   // 갱신 뒤 옛 카드가 남지 않도록 매번 서버에 확인
   const text = await res.text();
   const rows = parseCSV(text);
   const header = rows[0];
@@ -83,7 +83,7 @@ async function loadLinks() {
   LINKS = new Map();   // 표제어 → [{ rel, other, memo }]
   let text;
   try {
-    const res = await fetch("data/links.csv");
+    const res = await fetch("data/links.csv", { cache: "no-cache" });
     if (!res.ok) return;
     text = await res.text();
   } catch { return; }
@@ -402,14 +402,38 @@ ${sections}
 </body></html>`;
 }
 
+// 새 창을 먼저 시도하고, 팝업이 막히면(모바일에서 흔하다) 같은 창 안에 덮어 띄운다.
 function openCardList() {
   const pool = filteredPool();
   if (!pool.length) return;
-  const win = window.open("", "_blank");
-  if (!win) { alert("팝업이 차단되었습니다. 이 사이트의 팝업을 허용해 주세요."); return; }
-  win.document.open();
-  win.document.write(cardListHtml(pool));
-  win.document.close();
+  const html = cardListHtml(pool);
+  let win = null;
+  try { win = window.open("", "_blank"); } catch { win = null; }
+  if (win && win.document) {
+    try {
+      win.document.open(); win.document.write(html); win.document.close();
+      return;
+    } catch { try { win.close(); } catch {} }
+  }
+  showCardListOverlay(html);
+}
+
+function showCardListOverlay(html) {
+  let el = document.getElementById("listbox");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "listbox"; el.className = "peek";
+    el.innerHTML =
+      `<div class="peek-box listbox-box">
+         <div class="peek-bar"><b>선택 범위 카드</b>
+           <button type="button" class="ghost" id="listbox-close">닫기</button></div>
+         <iframe id="listbox-frame" title="선택 범위 카드 목록"></iframe>
+       </div>`;
+    document.body.appendChild(el);
+    el.querySelector("#listbox-close").onclick = () => el.remove();
+    el.addEventListener("click", e => { if (e.target === el) el.remove(); });
+  }
+  el.querySelector("#listbox-frame").srcdoc = html;
 }
 
 // ===== 화면 전환 =====
