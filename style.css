@@ -38,8 +38,10 @@ button.mini:hover { background: #eef2f8; border-color: #2b5fb8; color: #2b5fb8; 
   border-radius: 999px; cursor: pointer; font-size: 0.88rem; user-select: none;
 }
 .chip.on { background: #2b5fb8; color: #fff; border-color: #2b5fb8; }
-.pool-count { margin-top: 12px; font-weight: bold; color: #2b5fb8; }
-.pool-count.zero { color: #c0392b; }
+.pool-count { margin-top: 12px; font-weight: bold; color: #2b5fb8;
+              display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pool-count .zero { color: #c0392b; }
+button.mini:disabled { color: #aaa; border-color: #e0e2e6; cursor: default; background: #fff; }
 
 .mode-group { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
 .mode-group label { cursor: pointer; }

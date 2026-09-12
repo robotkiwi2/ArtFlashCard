@@ -349,8 +349,67 @@ function updatePoolCount() {
   const el = document.getElementById("pool-count");
   el.textContent = `선택 범위 카드: ${n}장`;
   el.classList.toggle("zero", n === 0);
+  document.getElementById("btn-cardlist").disabled = n === 0;
   document.getElementById("mode-note").textContent =
     getMode() === "image" ? "(이미지 있는 카드만 대상)" : "";
+}
+
+// ===== 선택 범위 카드 목록 =====
+// 지금 필터에 걸린 카드의 표제어를 과목별로 모아 새 창에 띄운다.
+// 무엇을 공부하게 되는지 시작 전에 훑어보기 위한 것이라 표제어만 싣는다.
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+
+function cardListHtml(pool) {
+  const bySubj = new Map();
+  pool.forEach(c => {
+    if (!bySubj.has(c.과목)) bySubj.set(c.과목, []);
+    bySubj.get(c.과목).push(c);
+  });
+  const cmp = (a, b) => a.표제어.localeCompare(b.표제어, "ko");
+  const scope = [
+    selectedSubject || "전체 과목",
+    filters.유형.size < allValues.유형.length ? [...filters.유형].join("·") : "",
+    getMode() === "image" ? "이미지 있는 카드" : "",
+  ].filter(Boolean).join(" · ");
+
+  const sections = [...bySubj.entries()].map(([subj, cards]) => `
+    <section>
+      <h2>${esc(subj)} <small>${cards.length}장</small></h2>
+      <ol>${cards.sort(cmp).map(c =>
+        `<li>${esc(c.표제어)}<span class="t">${esc(c.유형)}</span></li>`).join("")}</ol>
+    </section>`).join("");
+
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>선택 범위 카드 ${pool.length}장</title>
+<style>
+  body { font-family: "Malgun Gothic", "맑은 고딕", sans-serif; margin: 0; padding: 20px 24px; color: #222; background: #fff; }
+  h1 { font-size: 1.15rem; margin: 0 0 4px; }
+  .scope { color: #666; font-size: 0.88rem; margin-bottom: 18px; }
+  section { break-inside: avoid; margin-bottom: 18px; }
+  h2 { font-size: 0.98rem; margin: 0 0 6px; padding-bottom: 4px; border-bottom: 1px solid #e3e6ea; }
+  h2 small { color: #888; font-weight: normal; margin-left: 6px; }
+  ol { margin: 0; padding-left: 26px; columns: 3; column-gap: 28px; }
+  li { font-size: 0.92rem; line-height: 1.55; break-inside: avoid; }
+  .t { font-size: 0.7rem; color: #8a94a6; margin-left: 5px; }
+  @media (max-width: 860px) { ol { columns: 2; } }
+  @media (max-width: 520px) { ol { columns: 1; } }
+  @media print { body { padding: 0; } ol { columns: 3; } }
+</style></head><body>
+<h1>선택 범위 카드 ${pool.length}장</h1>
+<div class="scope">${esc(scope)}</div>
+${sections}
+</body></html>`;
+}
+
+function openCardList() {
+  const pool = filteredPool();
+  if (!pool.length) return;
+  const win = window.open("", "_blank");
+  if (!win) { alert("팝업이 차단되었습니다. 이 사이트의 팝업을 허용해 주세요."); return; }
+  win.document.open();
+  win.document.write(cardListHtml(pool));
+  win.document.close();
 }
 
 // ===== 화면 전환 =====
@@ -820,6 +879,7 @@ async function init() {
   };
 
   document.querySelectorAll('input[name="mode"]').forEach(r => r.onchange = updatePoolCount);
+  document.getElementById("btn-cardlist").onclick = openCardList;
   document.getElementById("btn-start").onclick = startSession;
   document.getElementById("btn-wrongnote").onclick = startReviewSession;
   document.getElementById("btn-reveal").onclick = reveal;
