@@ -11,7 +11,7 @@
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
-<link rel="stylesheet" href="style.css?v=4775d52d">
+<link rel="stylesheet" href="style.css?v=52bfb028">
 </head>
 <body>
 <header>
@@ -40,15 +40,16 @@
         <h3>시대</h3>
         <div id="filter-era" class="chip-group"></div>
       </div>
-      <div class="filter-block">
-        <h3>태그
+      <details class="filter-block filter-collapsible">
+        <summary>태그 <span class="hint">종류가 많아 접어 둠 · 펼쳐서 세부 선택 가능</span></summary>
+        <h3 class="bulk-only">
           <span class="bulk">
             <button type="button" id="tag-all" class="mini">모두 선택</button>
             <button type="button" id="tag-none" class="mini">해제</button>
           </span>
         </h3>
         <div id="filter-tag" class="chip-group scroll"></div>
-      </div>
+      </details>
       <div class="filter-block">
         <h3>중요도 (1=최상)</h3>
         <div id="filter-imp" class="chip-group"></div>
@@ -126,8 +127,10 @@
     <table id="stats-type" class="stats-table"></table>
   </div>
   <div class="panel">
-    <h2>태그별</h2>
-    <table id="stats-tag" class="stats-table"></table>
+    <details class="filter-collapsible">
+      <summary><h2 style="display:inline">태그별</h2> <span class="hint">종류가 많아 접어 둠</span></summary>
+      <table id="stats-tag" class="stats-table"></table>
+    </details>
   </div>
   <div class="panel">
     <h2>취약 카드 TOP 10 (2회 이상 시도)</h2>
