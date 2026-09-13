@@ -1009,7 +1009,7 @@ function scoreArea(area) {
     if (!s) return;
     seen++; tries += s.tries; correct += s.correct;
     const box = s.box || 0;
-    sum += s.wrong ? 0 : box >= 5 ? 1 : box >= 3 ? 0.7 : 0.4;
+    sum += s.wrong ? 0 : box >= 5 ? 1 : box >= 3 ? 0.85 : 0.5;
   });
   const total = area.cards.length;
   return {
@@ -1021,8 +1021,8 @@ function scoreArea(area) {
 }
 function areaColor(score) {
   if (score.seenRatio < 0.1) return "#9aa0a8";        // 거의 안 봄 (중립 회색)
-  if (score.avg < 0.45) return "#c0392b";             // 취약 (빨강)
-  if (score.avg < 0.75) return "#d9932c";             // 익히는 중 (주황)
+  if (score.avg < 0.35) return "#c0392b";             // 취약 (빨강) — 오답이 섞여야만 여기 온다
+  if (score.avg < 0.7) return "#d9932c";              // 익히는 중 (주황)
   return "#1e8e4e";                                    // 잘함 (초록)
 }
 function renderMap() {
