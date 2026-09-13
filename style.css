@@ -572,8 +572,7 @@ nav button { display: inline-flex; align-items: center; gap: 6px; }
 .exam-q-text figure img { display: block; width: 100%; max-height: 52vh; object-fit: contain; border-radius: 6px; background: #fff; border: 1px solid var(--panel-border); }
 .exam-q-text figure img.tall { max-height: 60vh; }
 .exam-q-text figcaption { font-size: 0.85em; color: var(--muted); margin-top: 4px; }
-.exam-q-text .figs { display: flex; gap: 12px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
-.exam-q-text .figs figure { flex: 1 1 160px; max-width: 300px; }
+.exam-q-text .figs figure { max-width: 360px; }   /* 도판이 여럿이어도 세로로 쌓아 각각 크게 보인다 */
 .exam-q-text .report figure { max-width: 100%; }
 .exam-q-text .qx-note { font-size: 0.8em; color: var(--muted-lt); margin-top: 12px; }
 @media (max-width: 640px) { .exam-q-text { padding: 12px 12px; } .exam-q-text .box, .exam-q-text .method { padding: 8px 10px; } }
