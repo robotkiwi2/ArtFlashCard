@@ -411,6 +411,8 @@ button:disabled:active { transform: none; }
 
 /* ===== 로그인 / 사용자 ===== */
 .login-panel { max-width: 420px; margin: 24px auto; display: flex; flex-direction: column; gap: 12px; }
+#login-form, #signup-form { display: flex; flex-direction: column; gap: 12px; }   /* 안쪽 폼도 같은 세로 배치 — 버튼이 입력칸 폭에 맞춰 늘어난다 */
+#login-form h2, #signup-form h2 { margin-bottom: 0; }
 .login-field { display: flex; flex-direction: column; gap: 4px; font-size: 0.95em; }
 .login-field input { font-size: 1.05em; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
   background: var(--input-bg); color: var(--fg); }
