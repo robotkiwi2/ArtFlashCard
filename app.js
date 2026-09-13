@@ -1459,9 +1459,38 @@ function openExam(id, idx = 0) {
   document.getElementById("exam-q-view").classList.remove("hidden");
   renderExamQ();
 }
+// 참고 답안: exam/answers/<id>.json ({note, answers:{"1":[줄,...]}}). 없으면 버튼을 숨긴다.
+const ANSWERS = {};
+async function loadAnswers(id) {
+  if (id in ANSWERS) return ANSWERS[id];
+  try {
+    const res = await fetch(`exam/answers/${id}.json?_=${Date.now()}`, { cache: "no-store" });
+    ANSWERS[id] = res.ok ? await res.json() : null;
+  } catch { ANSWERS[id] = null; }
+  return ANSWERS[id];
+}
+function hideAnswer() {
+  document.getElementById("exam-answer").classList.add("hidden");
+  document.getElementById("btn-exam-answer").textContent = "답 보기";
+}
+async function toggleAnswer() {
+  const box = document.getElementById("exam-answer");
+  if (!box.classList.contains("hidden")) { hideAnswer(); return; }
+  const data = await loadAnswers(exam.entry.id);
+  const q = exam.entry.questions[exam.idx];
+  const lines = data && data.answers && data.answers[String(q.n)];
+  box.innerHTML = `<p class="ans-note">${esc(data && data.note || "참고 답안")}</p>` +
+    (lines ? lines.map(l => `<p>${esc(l)}</p>`).join("") : `<p class="ans-none">이 문항의 참고 답안은 아직 없습니다.</p>`);
+  box.classList.remove("hidden");
+  document.getElementById("btn-exam-answer").textContent = "답 닫기";
+  box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
 function renderExamQ() {
   const { entry, idx } = exam;
   const q = entry.questions[idx];
+  hideAnswer();
+  loadAnswers(entry.id).then(d => document.getElementById("btn-exam-answer").classList.toggle("hidden", !(d && d.answers)));
   document.getElementById("exam-progress").textContent = `${entry.title} · ${q.n}번 / ${entry.count}문항${q.points ? ` · ${q.points}점` : ""}`;
   const img = document.getElementById("exam-q-img");
   img.src = q.img; img.alt = `${q.n}번 문항`;
@@ -1604,6 +1633,7 @@ async function init() {
     const b = e.target.closest && e.target.closest("[data-zoom]");
     if (b) stepZoom(b.dataset.for, b.dataset.zoom);
   });
+  document.getElementById("btn-exam-answer").onclick = toggleAnswer;
   document.getElementById("btn-exam-prev").onclick = () => examStep(-1);
   document.getElementById("btn-exam-next").onclick = () => examStep(1);
   document.addEventListener("keydown", e => {
