@@ -137,10 +137,21 @@ function mergeStats(local, remote) {
   new Set([...Object.keys(local), ...Object.keys(remote)]).forEach(id => { out[id] = newer(local[id], remote[id]); });
   return out;
 }
-function sameStats(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
 
-// 로그인 직후 한 번. 예전(로그인 이전) 기록이 기기에 남아 있으면 함께 합친다.
-async function syncProgress() {
+// 로그인 직후, 그리고 앱이 다시 화면에 나타날 때·세션을 시작할 때 다시 부른다.
+// 다른 기기에서 그사이 푼 기록을 받아 오기 위해서다. 예전(로그인 이전) 기록이 기기에 남아 있으면 함께 합친다.
+let lastSyncAt = 0, syncing = null;
+const SYNC_MIN_GAP = 30 * 1000;   // 너무 잦은 읽기를 막는 최소 간격
+function syncProgress() {
+  if (syncing) return syncing;
+  syncing = doSyncProgress().finally(() => { syncing = null; lastSyncAt = Date.now(); });
+  return syncing;
+}
+async function resyncIfStale() {
+  if (!currentUser || Date.now() - lastSyncAt < SYNC_MIN_GAP) return;
+  await syncProgress();
+}
+async function doSyncProgress() {
   let local = loadStats();
   let legacy = null;
   try { legacy = JSON.parse(localStorage.getItem(LS_KEY)); } catch {}
@@ -152,10 +163,15 @@ async function syncProgress() {
 
   const merged = mergeStats(local, remote || {});
   storeStats(merged);
-  if (!remote || !sameStats(merged, remote)) {
-    try { await FB.writeProgress(currentUser.uid, merged); }
-    catch (e) { console.warn("[sync] 클라우드 기록 저장 실패", e); return; }
-  }
+  try {
+    if (!remote) await FB.writeProgress(currentUser.uid, merged);
+    else {
+      // 로컬이 이긴 카드만 올린다. 문서 전체를 덮어쓰면 읽고 쓰는 사이 다른 기기가 쓴 항목이 사라질 수 있다.
+      const won = {};
+      Object.keys(merged).forEach(id => { if (merged[id] !== remote[id]) won[id] = merged[id]; });
+      if (Object.keys(won).length) await FB.saveProgressEntries(currentUser.uid, won);
+    }
+  } catch (e) { console.warn("[sync] 클라우드 기록 저장 실패", e); return; }
   if (legacy) { try { localStorage.removeItem(LS_KEY); } catch {} }
 }
 
@@ -570,7 +586,8 @@ function sessionSize(poolLen) {
   return Math.min(parseInt(document.getElementById("session-count").value, 10) || 10, poolLen);
 }
 
-function startSession() {
+async function startSession() {
+  await resyncIfStale();
   const pool = filteredPool();
   if (!pool.length) { alert("선택한 범위에 카드가 없습니다."); return; }
   session = {
@@ -582,7 +599,8 @@ function startSession() {
 }
 
 // 오답 노트: 필터 범위를 무시하고 오답으로 기록된 카드만 출제
-function startReviewSession() {
+async function startReviewSession() {
+  await resyncIfStale();
   let pool = wrongCards();
   if (!pool.length) { alert("오답으로 기록된 카드가 없습니다."); return; }
   if (getMode() === "image") {
@@ -906,6 +924,8 @@ function finishSession() {
   document.getElementById("result-wrong-list").innerHTML = parts.join("");
   updateWrongCount();
   show("result");
+  // 세션이 끝난 김에 다른 기기 기록을 받아 둔다 — 이어서 보는 약점 지도·오답 노트가 최신이 되도록
+  resyncIfStale().then(updateWrongCount);
 }
 
 // ===== 통계 화면 =====
@@ -1143,7 +1163,8 @@ function renderMap() {
             </button>`;
   }).join("");
 }
-function startAreaSession(key) {
+async function startAreaSession(key) {
+  await resyncIfStale();
   const area = buildAreas().find(a => a.key === key);
   if (!area || !area.cards.length) return;
   session = {
@@ -1274,6 +1295,18 @@ async function init() {
       renderStats(); updateWrongCount();
     }
   };
+
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState !== "visible" || !currentUser) return;
+    const before = JSON.stringify(loadStats());
+    await resyncIfStale();
+    if (JSON.stringify(loadStats()) === before) return;
+    const inQuiz = !document.getElementById("screen-quiz").classList.contains("hidden");
+    if (inQuiz) return;   // 진행 중인 세션은 건드리지 않는다
+    updateWrongCount(); updatePoolCount();
+    if (!document.getElementById("screen-stats").classList.contains("hidden")) renderStats();
+    if (!document.getElementById("screen-map").classList.contains("hidden")) renderMap();
+  });
 
   FB.onAuth(user => {
     currentUser = user;

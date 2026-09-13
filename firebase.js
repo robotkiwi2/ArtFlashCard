@@ -66,15 +66,17 @@ async function loadProgress(uid) {
 async function writeProgress(uid, cards) {
   await setDoc(progressRef(uid), { cards, updatedAt: new Date().toISOString() });
 }
-// 카드 하나만 갱신한다 — 다른 기기가 방금 쓴 다른 카드 항목을 덮어쓰지 않는다.
-async function saveProgressEntry(uid, cardId, entry) {
-  try {
-    await updateDoc(progressRef(uid), { [`cards.${cardId}`]: entry, updatedAt: new Date().toISOString() });
-  } catch (e) {
-    if (e && e.code === "not-found") await setDoc(progressRef(uid), { cards: { [cardId]: entry }, updatedAt: new Date().toISOString() });
+// 지정한 카드 항목만 갱신한다 — 다른 기기가 방금 쓴 다른 카드 항목을 덮어쓰지 않는다.
+async function saveProgressEntries(uid, entries) {
+  const patch = { updatedAt: new Date().toISOString() };
+  Object.keys(entries).forEach(id => { patch[`cards.${id}`] = entries[id]; });
+  try { await updateDoc(progressRef(uid), patch); }
+  catch (e) {
+    if (e && e.code === "not-found") await setDoc(progressRef(uid), { cards: entries, updatedAt: patch.updatedAt });
     else throw e;
   }
 }
+const saveProgressEntry = (uid, cardId, entry) => saveProgressEntries(uid, { [cardId]: entry });
 
 window.FB = {
   onAuth: cb => onAuthStateChanged(auth, cb),
@@ -86,4 +88,5 @@ window.FB = {
   loadProgress,
   writeProgress,
   saveProgressEntry,
+  saveProgressEntries,
 };
