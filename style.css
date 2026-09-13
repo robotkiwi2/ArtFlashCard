@@ -496,3 +496,8 @@ nav button { display: inline-flex; align-items: center; gap: 6px; }
 .exam-q-panel { padding: 10px; background: #fff; }   /* 시험지는 항상 흰 종이 위에 */
 .exam-q-panel img { display: block; width: 100%; height: auto; }
 .exam-nav { display: flex; justify-content: center; gap: 14px; }
+
+.src-link { border: 1px solid var(--brand); background: none; color: var(--brand); border-radius: 999px;
+  padding: 1px 8px; font-size: 0.78rem; cursor: pointer; }
+.src-link:hover { background: var(--hover-bg); }
+.exam-peek-box { width: min(960px, 100%); }

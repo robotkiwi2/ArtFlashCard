@@ -836,9 +836,45 @@ function closePeek() {
 }
 
 // 기출 출처(연도+과목+문항). 개수가 곧 빈출도다.
+// 출처 태그(예: 2026A7)가 기출문제 뷰어에 있는 문항이면 눌러서 원문을 볼 수 있게 한다
+function examQuestionFor(tag) {
+  const m = /^(\d{4}[AB])(\d{1,2})$/.exec(tag);
+  if (!m || !EXAMS) return null;
+  const entry = EXAMS.find(e => e.id === m[1]);
+  const idx = entry ? entry.questions.findIndex(q => q.n === +m[2]) : -1;
+  return idx >= 0 ? { id: m[1], idx } : null;
+}
 function srcTag(c) {
   const s = (c.출처 || "").split(";").map(x => x.trim()).filter(Boolean);
-  return s.length ? `<div class="src">기출 ${s.length}회 · ${s.join(", ")}</div>` : "";
+  if (!s.length) return "";
+  const items = s.map(t => {
+    const q = examQuestionFor(t);
+    return q ? `<button type="button" class="src-link" data-exam="${q.id}" data-idx="${q.idx}" title="기출 문항 원문 보기">${esc(t)} ↗</button>` : esc(t);
+  });
+  return `<div class="src">기출 ${s.length}회 · ${items.join(", ")}</div>`;
+}
+// 학습 중에도 세션을 깨지 않도록 문항은 겹창으로 띄운다
+function openExamPeek(id, idx) {
+  const entry = EXAMS && EXAMS.find(e => e.id === id);
+  const q = entry && entry.questions[idx];
+  if (!q) return;
+  let el = document.getElementById("exam-peek");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "exam-peek"; el.className = "peek";
+    el.innerHTML = `<div class="peek-box exam-peek-box">
+        <div class="peek-bar"><b id="exam-peek-title"></b><span class="peek-path"></span>
+          <button type="button" class="ghost" id="exam-peek-close">닫기</button></div>
+        <div class="exam-q-panel"><img id="exam-peek-img" alt="기출 문항"></div>
+      </div>`;
+    document.body.appendChild(el);
+    el.querySelector("#exam-peek-close").onclick = () => el.classList.add("hidden");
+    el.addEventListener("click", e => { if (e.target === el) el.classList.add("hidden"); });
+  }
+  el.querySelector("#exam-peek-title").textContent = `${entry.title} ${q.n}번${q.points ? ` (${q.points}점)` : ""}`;
+  el.querySelector("#exam-peek-img").src = q.img;
+  el.classList.remove("hidden");
+  el.querySelector(".peek-box").scrollTop = 0;
 }
 
 // ===== 힌트 (표제어를 인출해야 하는 모드에서만: 설명 제시·이미지 제시) =====
@@ -1419,7 +1455,7 @@ let dataLoaded = false;
 async function bootUserData() {
   setLoginMsg("카드 데이터를 불러오는 중…");
   try {
-    if (!dataLoaded) { await loadCards(); await loadLinks(); dataLoaded = true; }
+    if (!dataLoaded) { await loadCards(); await loadLinks(); await loadExams().catch(() => {}); dataLoaded = true; }
     await syncProgress();
   } catch (e) {
     console.error(e);
@@ -1449,7 +1485,12 @@ async function init() {
     const b = e.target.closest && e.target.closest(".link-card");
     if (b) { e.preventDefault(); openPeek(b.dataset.name); }
   });
-  document.addEventListener("keydown", e => { if (e.key === "Escape") { closePeek(); closeHelp(); closeSettings(); } });
+  document.addEventListener("click", e => {
+    const b = e.target.closest && e.target.closest(".src-link");
+    if (b) { e.preventDefault(); openExamPeek(b.dataset.exam, +b.dataset.idx); }
+  });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") { closePeek(); closeHelp(); closeSettings();
+    const ep = document.getElementById("exam-peek"); if (ep) ep.classList.add("hidden"); } });
   document.getElementById("btn-settings").onclick = openSettings;
   document.getElementById("btn-settings-close").onclick = closeSettings;
   document.getElementById("settings-overlay").addEventListener("click", e => { if (e.target.id === "settings-overlay") closeSettings(); });
