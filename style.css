@@ -516,3 +516,12 @@ nav button { display: inline-flex; align-items: center; gap: 6px; }
 }
 
 #peek { z-index: 60; }
+
+/* ===== 예상 점수 ===== */
+.est { text-align: center; padding: 14px 10px 16px; margin-bottom: 14px; border-radius: 12px;
+  background: var(--chip-bg); border: 1px solid var(--panel-border); }
+.est-label { font-size: 0.9rem; color: var(--muted); }
+.est-score { font-size: 2.4rem; font-weight: bold; color: var(--brand); line-height: 1.15; margin: 2px 0; }
+.est-score small { font-size: 1rem; font-weight: normal; color: var(--muted); margin-left: 4px; }
+.est-sub { font-size: 0.88rem; color: var(--muted); }
+.est-sub .hint { display: block; font-size: 0.75rem; margin-top: 2px; }

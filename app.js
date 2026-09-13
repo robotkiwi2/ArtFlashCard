@@ -1140,9 +1140,36 @@ const OV_BUCKETS = [
   { key: "new",      label: "미학습",     color: "#c3c8cf", hint: "아직 안 본 카드" },
 ];
 
+// 예상 점수: 시험 총점 80점(전공A 40 + 전공B 40) × 진행 비율 × 정답률.
+// 카드마다 중요도 가중치를 둔다 — 시험은 핵심(1등급)에서 더 많이 나오므로 그쪽 진도·정답이 점수에 더 크게 잡힌다.
+const EXAM_TOTAL = 80;
+const IMP_WEIGHT = { "1": 3, "2": 2, "3": 1, "4": 0.5 };
+function estimateScore(stats) {
+  let wAll = 0, wSeen = 0, wAcc = 0;
+  CARDS.forEach(c => {
+    const w = IMP_WEIGHT[c.중요도] || 1;
+    wAll += w;
+    const s = stats[c.id];
+    if (!s || !s.tries) return;
+    wSeen += w;
+    wAcc += w * (s.correct / s.tries);
+  });
+  const progress = wAll ? wSeen / wAll : 0;          // 가중 진행 비율
+  const accuracy = wSeen ? wAcc / wSeen : 0;         // 가중 정답률
+  return { score: Math.round(EXAM_TOTAL * progress * accuracy), progress, accuracy };
+}
+
 function renderOverview() {
   const stats = loadStats();
   const total = CARDS.length;
+  const est = estimateScore(stats);
+  const estHtml = `
+    <div class="est">
+      <div class="est-label">현재 상태 예상 점수</div>
+      <div class="est-score">${est.score}<small>점 / ${EXAM_TOTAL}점</small></div>
+      <div class="est-sub">진행 ${Math.round(est.progress * 100)}% × 정답률 ${Math.round(est.accuracy * 100)}%
+        <span class="hint">(중요도 1등급 카드에 더 큰 가중치)</span></div>
+    </div>`;
   const b = { done: 0, familiar: 0, learning: 0, wrong: 0, new: 0 };
   let seen = 0, tries = 0, correct = 0;
 
@@ -1187,7 +1214,7 @@ function renderOverview() {
     .join("");
 
   document.getElementById("stats-overview").innerHTML =
-    nums +
+    estHtml + nums +
     `<div class="stack">${seg}</div>` +
     `<div class="legend">${legend}</div>` +
     `<div class="ov-note">막대는 카드 ${total}장을 숙련도로 나눈 것입니다. ` +
