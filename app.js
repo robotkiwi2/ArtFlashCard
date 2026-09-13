@@ -570,7 +570,7 @@ window.addEventListener("message", e => {
 });
 
 // ===== 화면 전환 =====
-const screens = ["login", "setup", "quiz", "result", "stats", "map"];
+const screens = ["login", "setup", "quiz", "result", "stats", "map", "me"];
 function show(name) {
   screens.forEach(s => {
     const el = document.getElementById("screen-" + s);
@@ -581,11 +581,9 @@ function show(name) {
     el.classList.toggle("hidden", !on);
   });
   // 학습 수행 중·로그인 전에는 상단 네비게이션을 감춘다
-  document.querySelector("header nav").classList.toggle("hidden", name === "quiz" || name === "login");
-  document.getElementById("user-box").classList.toggle("hidden", name === "login");
-  document.getElementById("nav-setup").classList.toggle("active", name === "setup");
-  document.getElementById("nav-stats").classList.toggle("active", name === "stats");
-  document.getElementById("nav-map").classList.toggle("active", name === "map");
+  document.getElementById("main-nav").classList.toggle("hidden", name === "quiz" || name === "login");
+  document.getElementById("btn-settings").classList.toggle("hidden", name === "quiz");
+  ["setup", "stats", "map", "me"].forEach(n => document.getElementById("nav-" + n).classList.toggle("active", name === n));
 }
 
 // ===== 학습 세션 =====
@@ -1290,6 +1288,30 @@ function applyUpdateIfIdle() {
   location.reload();
 }
 
+// ===== 내 정보 =====
+function renderMe() {
+  const stats = loadStats();
+  const ids = Object.keys(stats);
+  const tries = ids.reduce((a, id) => a + (stats[id].tries || 0), 0);
+  const correct = ids.reduce((a, id) => a + (stats[id].correct || 0), 0);
+  const mastered = ids.filter(id => (stats[id].box || 0) >= 5).length;
+  const wrong = ids.filter(id => stats[id].wrong).length;
+  const pct = n => CARDS.length ? Math.round(n / CARDS.length * 100) : 0;
+  document.getElementById("me-summary").innerHTML = [
+    [`${ids.length.toLocaleString()}장`, `본 카드 (${pct(ids.length)}%)`],
+    [`${tries ? Math.round(correct / tries * 100) : 0}%`, `누적 정답률 (${tries.toLocaleString()}회)`],
+    [`${mastered.toLocaleString()}장`, `5단계 도달 (${pct(mastered)}%)`],
+    [`${wrong.toLocaleString()}장`, `오답 노트`],
+  ].map(([v, l]) => `<div class="me-stat"><b>${v}</b><span>${l}</span></div>`).join("");
+  document.getElementById("me-app-ver").textContent = runningAppHash() || "-";
+  document.getElementById("me-data-ver").textContent = FB.cachedBundleVersion("cards") || "-";
+  document.getElementById("me-sync").textContent = lastSyncAt ? new Date(lastSyncAt).toLocaleString("ko-KR") : "-";
+}
+
+// ===== 설정 =====
+function openSettings() { document.getElementById("settings-overlay").classList.remove("hidden"); }
+function closeSettings() { document.getElementById("settings-overlay").classList.add("hidden"); }
+
 // ===== 도움말 =====
 function openHelp() {
   document.getElementById("help-email").textContent = currentUser ? (currentUser.email || "-") : "로그인 전";
@@ -1298,6 +1320,7 @@ function openHelp() {
   document.getElementById("help-data-ver").textContent = FB.cachedBundleVersion("cards") || "-";
   const n = Object.keys(loadStats()).length;
   document.getElementById("help-seen").textContent = CARDS.length ? `${n.toLocaleString()}장 (${Math.round(n / CARDS.length * 100)}%)` : "-";
+  closeSettings();
   const el = document.getElementById("help-overlay");
   el.classList.remove("hidden");
   el.querySelector(".peek-box").scrollTop = 0;
@@ -1361,7 +1384,15 @@ async function init() {
     const b = e.target.closest && e.target.closest(".link-card");
     if (b) { e.preventDefault(); openPeek(b.dataset.name); }
   });
-  document.addEventListener("keydown", e => { if (e.key === "Escape") { closePeek(); closeHelp(); } });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") { closePeek(); closeHelp(); closeSettings(); } });
+  document.getElementById("btn-settings").onclick = openSettings;
+  document.getElementById("btn-settings-close").onclick = closeSettings;
+  document.getElementById("settings-overlay").addEventListener("click", e => { if (e.target.id === "settings-overlay") closeSettings(); });
+  document.getElementById("nav-me").onclick = () => { renderMe(); show("me"); };
+  document.getElementById("btn-resync").onclick = async () => {
+    const b = document.getElementById("btn-resync"); b.disabled = true; b.textContent = "동기화 중…";
+    try { lastSyncAt = 0; await syncProgress(); } finally { b.disabled = false; b.textContent = "지금 동기화"; renderMe(); updateWrongCount(); }
+  };
   document.getElementById("btn-help").onclick = openHelp;
   document.getElementById("btn-help-close").onclick = closeHelp;
   document.getElementById("help-overlay").addEventListener("click", e => { if (e.target.id === "help-overlay") closeHelp(); });
@@ -1426,7 +1457,7 @@ async function init() {
     if (confirm("모든 학습 기록을 삭제할까요? 모든 기기에서 지워지며 되돌릴 수 없습니다.")) {
       storeStats({});
       if (currentUser) FB.writeProgress(currentUser.uid, {}).catch(e => alert("클라우드 기록 삭제 실패: " + e));
-      renderStats(); updateWrongCount();
+      renderMe(); updateWrongCount();
     }
   };
 
