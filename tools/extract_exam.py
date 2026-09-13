@@ -35,6 +35,60 @@ EXAMS = {
             (12, [(7, "F", 137, 678)]),
         ],
     },
+    "2026B": {
+        "title": "2026학년도 전공B",
+        "pdf": "2026_미술_3b.pdf",
+        "questions": [
+            (1,  [(1, "F", 335, 565)]),
+            (2,  [(1, "F", 565, 1050)]),
+            (3,  [(2, "L", 137, 556)]),
+            (4,  [(2, "R", 137, 1057)]),
+            (5,  [(3, "F", 137, 692)]),
+            (6,  [(3, "F", 692, 1064)]),
+            (7,  [(4, "L", 137, 810)]),
+            (8,  [(4, "R", 137, 595)]),
+            (9,  [(5, "L", 137, 841)]),
+            (10, [(5, "R", 137, 1020)]),
+            (11, [(6, "F", 137, 700)]),
+        ],
+    },
+    "2025A": {
+        "title": "2025학년도 전공A",
+        "pdf": "2025미술A.pdf",
+        "text": False,   # 이 PDF 는 글꼴 매핑이 깨져 추출 텍스트를 쓸 수 없다 (이미지는 정상)
+        "questions": [
+            (1,  [(1, "L", 334, 857)]),
+            (2,  [(1, "R", 277, 1035)]),
+            (3,  [(2, "L", 136, 921)]),
+            (4,  [(2, "R", 136, 807)]),
+            (5,  [(3, "L", 136, 862)]),
+            (6,  [(3, "R", 136, 728)]),
+            (7,  [(4, "F", 136, 898)]),
+            (8,  [(5, "F", 136, 605)]),
+            (9,  [(5, "F", 605, 1052)]),
+            (10, [(6, "F", 136, 917)]),
+            (11, [(7, "L", 136, 670)]),
+            (12, [(7, "R", 136, 1005)]),
+        ],
+    },
+    "2025B": {
+        "title": "2025학년도 전공B",
+        "pdf": "2025 미술B.pdf",
+        "text": False,
+        "questions": [
+            (1,  [(1, "L", 334, 1032)]),
+            (2,  [(1, "R", 277, 642)]),
+            (3,  [(2, "L", 136, 555)]),
+            (4,  [(2, "R", 136, 887)]),
+            (5,  [(3, "F", 136, 830)]),
+            (6,  [(4, "F", 136, 842)]),
+            (7,  [(5, "L", 136, 759)]),
+            (8,  [(5, "R", 136, 627)]),
+            (9,  [(6, "F", 136, 937)]),
+            (10, [(7, "L", 136, 859)]),
+            (11, [(7, "R", 136, 651)]),
+        ],
+    },
 }
 
 def first_line(page, col, y0):
@@ -48,7 +102,7 @@ def points_of(page, segs):
     for (pg, col, y0, y1) in segs:
         x0, x1 = COLS[col]
         txt = page.parent[pg - 1].get_text("text", clip=pymupdf.Rect(x0, y0, x1, y1))
-        m = re.search(r"\[(\d+)점\]", txt)
+        m = re.search(r"\[(\d+)\S\]", txt)   # 글꼴이 깨진 PDF 는 '점' 이 다른 글자로 나온다
         if m: return int(m.group(1))
     return None
 
@@ -57,6 +111,7 @@ def render(doc, segs):
     tiles = []
     for (pg, col, y0, y1) in segs:
         x0, x1 = COLS[col]
+        y1 = min(y1 + 8, 1088)   # 표 테두리가 잘리지 않도록 아래 여유. 1088 아래는 꼬리말
         pix = doc[pg - 1].get_pixmap(matrix=pymupdf.Matrix(ZOOM, ZOOM), clip=pymupdf.Rect(x0, y0, x1, y1), alpha=False)
         tiles.append(Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
     w = max(t.width for t in tiles); h = sum(t.height for t in tiles)
@@ -79,7 +134,8 @@ def main(ids):
             rel = f"exam/{eid}/q{n:02d}.jpg"
             img.save(os.path.join(ROOT, rel), "JPEG", quality=88, optimize=True)
             pg, col, y0, _ = segs[0]
-            qs.append({"n": n, "points": points_of(doc[pg - 1], segs), "text": first_line(doc[pg - 1], col, y0)[:80], "img": rel})
+            text = first_line(doc[pg - 1], col, y0)[:80] if spec.get("text", True) else ""
+            qs.append({"n": n, "points": points_of(doc[pg - 1], segs), "text": text, "img": rel})
             print(f"{eid} q{n:02d}: {img.width}x{img.height}  [{qs[-1]['points']}점] {qs[-1]['text'][:40]}")
         entry = {"id": eid, "title": spec["title"], "count": len(qs), "questions": qs}
         index = [e for e in index if e["id"] != eid] + [entry]
