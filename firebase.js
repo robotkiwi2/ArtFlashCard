@@ -120,7 +120,7 @@ async function listMajors() {
 
 // ----- 계정 -----
 // 가입 알림: Google Apps Script 웹훅 (tools/apps_script/notify.gs). 관리자 메일로 승인/보류/거절 링크가 간다.
-const NOTIFY_URL = "";          // 배포한 Apps Script 웹 앱 URL
+const NOTIFY_URL = "https://script.google.com/macros/s/AKfycbw6Vlu3S6r-qm6cwqn7HFR_ESfHc-muaKfHOuRWpqoQytl8G53iZDMPakdxrT1oUXtW/exec";
 const NOTIFY_TOKEN = "O0SsGrUjqI1RTOYr3f7_hIUY";   // Apps Script 스크립트 속성 SIGNUP_TOKEN 과 같은 값
 async function signup(email, pw, major) {
   const cred = await createUserWithEmailAndPassword(auth, email, pw);
