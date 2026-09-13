@@ -474,3 +474,6 @@ nav button { display: inline-flex; align-items: center; gap: 6px; }
   #main-nav button svg.ico { width: 1.5rem; height: 1.5rem; }
   #main-nav button.active { background: none; color: var(--brand); font-weight: bold; }
 }
+
+/* 유형 칩은 폰에서 한 줄에 들어가도록 좁게 */
+#filter-type .chip { padding: 5px 9px; font-size: 0.84rem; }

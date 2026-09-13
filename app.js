@@ -18,9 +18,9 @@ const FONT_SIZES = [
 const FS_DEFAULT = 1.2;
 const THEME_KEY = "flashcard-theme-v1";
 const THEME_OPTIONS = [
-  { value: "light",  label: "☀️ 라이트" },
-  { value: "dark",   label: "🌙 다크" },
-  { value: "system", label: "🖥 시스템" },
+  { value: "light",  label: "라이트" },
+  { value: "dark",   label: "다크" },
+  { value: "system", label: "시스템 설정 따름" },
 ];
 const THEME_DEFAULT = "system";
 const DEP_KEYS = [
@@ -1325,7 +1325,6 @@ function closeSettings() { document.getElementById("settings-overlay").classList
 
 // ===== 도움말 =====
 function openHelp() {
-  document.getElementById("help-email").textContent = currentUser ? (currentUser.email || "-") : "로그인 전";
   document.getElementById("help-cards").textContent = CARDS.length ? `${CARDS.length.toLocaleString()}장` : "-";
   document.getElementById("help-app-ver").textContent = runningAppHash() || "-";
   document.getElementById("help-data-ver").textContent = FB.cachedBundleVersion("cards") || "-";
@@ -1361,7 +1360,7 @@ async function doResetPassword() {
   catch (e) { setLoginMsg(FB.authMessage(e), true); }
 }
 
-// 로그인한 사용자의 데이터(카드·관계·기록)를 읽어 학습 설정 화면을 연다
+// 로그인한 사용자의 데이터(카드·관계·기록)를 읽어 학습하기 화면을 연다
 let dataLoaded = false;
 async function bootUserData() {
   setLoginMsg("카드 데이터를 불러오는 중…");

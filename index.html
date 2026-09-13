@@ -11,13 +11,13 @@
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
-<link rel="stylesheet" href="style.css?v=4e9018fd">
+<link rel="stylesheet" href="style.css?v=b3749dbd">
 </head>
 <body>
 <header>
   <h1><svg class="ico title-ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 1 0-20c5.5 0 10 3.6 10 8 0 2.8-2.2 5-5 5h-1.8a1.7 1.7 0 0 0-1.2 2.9c.4.4.6.9.6 1.4A2.7 2.7 0 0 1 12 22z"/><circle cx="7.5" cy="11.5" r="1.2" fill="currentColor"/><circle cx="11" cy="7.5" r="1.2" fill="currentColor"/><circle cx="16" cy="8.5" r="1.2" fill="currentColor"/></svg>임용미술 플래시카드</h1>
   <nav id="main-nav">
-    <button id="nav-setup" class="active"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="lbl">학습 설정</span></button>
+    <button id="nav-setup" class="active"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="lbl">학습하기</span></button>
     <button id="nav-map"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="lbl">약점 지도</span></button>
     <button id="nav-stats"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="3" y1="20" x2="21" y2="20"/></svg><span class="lbl">성적 관리</span></button>
     <button id="nav-me"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="lbl">내 정보</span></button>
@@ -57,7 +57,7 @@
 
     <h3>기본 흐름</h3>
     <ol>
-      <li><b>학습 설정</b>에서 과목을 하나 고르고, 필요하면 유형·시대·태그·중요도를 좁힙니다.</li>
+      <li><b>학습하기</b>에서 과목을 하나 고르고, 필요하면 유형·시대·태그·중요도를 좁힙니다.</li>
       <li><b>모드</b>를 고릅니다.
         <ul>
           <li><b>설명 제시</b>(기본) — 설명을 보고 용어를 떠올립니다.</li>
@@ -92,7 +92,6 @@
 
     <h3>앱 정보</h3>
     <table class="help-info">
-      <tr><th>계정</th><td id="help-email">-</td></tr>
       <tr><th>카드 수</th><td id="help-cards">-</td></tr>
       <tr><th>앱 버전</th><td id="help-app-ver">-</td></tr>
       <tr><th>카드 데이터 버전</th><td id="help-data-ver">-</td></tr>
@@ -120,13 +119,13 @@
   </div>
 </section>
 
-<!-- ===== 학습 설정 화면 ===== -->
+<!-- ===== 학습하기 화면 ===== -->
 <section id="screen-setup" class="hidden">
   <div class="panel">
     <h2>범위 선택</h2>
     <div class="filter-grid">
       <div class="filter-block">
-        <h3>과목 <span class="hint">하나만 선택 · 아래 항목이 해당 과목 것으로 갱신됩니다</span></h3>
+        <h3>과목</h3>
         <div id="filter-subject" class="chip-group"></div>
       </div>
       <details class="filter-block filter-collapsible" open>
@@ -289,6 +288,6 @@
 </section>
 
 <script type="module" src="firebase.js?v=a7907f17"></script>
-<script type="module" src="app.js?v=7ff0a228"></script>
+<script type="module" src="app.js?v=4b84c38c"></script>
 </body>
 </html>
