@@ -40,11 +40,16 @@ function authMessage(err) {
 const BUNDLE_CACHE = "flashcard-bundle-v1:";
 
 async function loadBundle(name) {
-  const metaSnap = await getDoc(doc(db, "bundle", name));
-  if (!metaSnap.exists()) throw new Error(`bundle/${name} 이 없습니다. tools/upload_firestore.py 를 먼저 실행하세요.`);
-  const { v, n, label } = metaSnap.data();
   let cached = null;
   try { cached = JSON.parse(localStorage.getItem(BUNDLE_CACHE + name)); } catch {}
+  const hasCache = cached && typeof cached.text === "string";
+  // 오프라인이거나 메타를 못 읽으면(연결 불량) 캐시로 바로 시작한다. 갱신 확인은 나중에 화면 복귀 때 다시 한다.
+  if (hasCache && typeof navigator !== "undefined" && navigator.onLine === false) return cached.text;
+  let metaSnap;
+  try { metaSnap = await getDoc(doc(db, "bundle", name)); }
+  catch (e) { if (hasCache) { console.warn(`[bundle] ${name} 메타 읽기 실패 — 캐시 사용`, e); return cached.text; } throw e; }
+  if (!metaSnap.exists()) throw new Error(`bundle/${name} 이 없습니다. tools/upload_firestore.py 를 먼저 실행하세요.`);
+  const { v, n, label } = metaSnap.data();
   if (cached && cached.v === v && typeof cached.text === "string") {
     if (label && cached.label !== label) { cached.label = label; try { localStorage.setItem(BUNDLE_CACHE + name, JSON.stringify(cached)); } catch {} }
     return cached.text;

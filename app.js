@@ -1397,8 +1397,10 @@ function applyUpdateIfIdle() {
 let EXAMS = null, exam = null;   // exam = { entry, idx }
 async function loadExams() {
   if (EXAMS) return EXAMS;
-  const res = await fetch(`exam/index.json?_=${Date.now()}`, { cache: "no-store" });
-  EXAMS = res.ok ? await res.json() : [];
+  try {
+    const res = await fetch(`exam/index.json?_=${Date.now()}`, { cache: "no-store" });
+    EXAMS = res.ok ? await res.json() : [];
+  } catch { EXAMS = []; }   // 오프라인 등. 서비스 워커 캐시가 있으면 fetch 가 그걸 돌려준다
   return EXAMS;
 }
 async function renderExamList() {
@@ -1668,5 +1670,10 @@ async function init() {
 
 // 모듈 스코프라 콘솔·자동 테스트에서 상태를 볼 수 없어 읽기 전용 핸들을 둔다
 window.__app = { get CARDS() { return CARDS; }, get session() { return session; }, get user() { return currentUser; }, loadStats };
+
+if ("serviceWorker" in navigator) {
+  // 오프라인에서도 앱 껍데기가 뜨도록. 등록 실패는 무시한다(파일 프로토콜, 사설 모드 등)
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
 
 init();

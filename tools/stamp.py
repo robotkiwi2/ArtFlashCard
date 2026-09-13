@@ -47,6 +47,13 @@ def main():
         print("stamp: index.html updated")
     else:
         print("stamp: no change")
+    # 서비스 워커도 같은 버전으로 — 파일 내용이 바뀌어야 브라우저가 새 워커를 설치한다
+    swp = os.path.join(ROOT, "sw.js")
+    if os.path.exists(swp):
+        sw = io.open(swp, encoding="utf-8").read()
+        sw2 = re.sub(r'const VERSION = "[^"]*";', 'const VERSION = "%s";' % app_version(), sw)
+        if sw2 != sw:
+            io.open(swp, "w", encoding="utf-8", newline="\n").write(sw2); print("stamp: sw.js updated")
     return 0
 
 if __name__ == "__main__":
