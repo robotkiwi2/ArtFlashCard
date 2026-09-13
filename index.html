@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>중등 임용 플래시카드</title>
-<meta name="app-version" content="v2.1.86">
+<meta name="app-version" content="v2.1.87">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1a1d23" media="(prefers-color-scheme: dark)">
@@ -21,7 +21,7 @@
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
-<link rel="stylesheet" href="style.css?v=068317bd">
+<link rel="stylesheet" href="style.css?v=edeaf680">
 </head>
 <body>
 <header>
@@ -339,16 +339,14 @@
     <p class="me-email" id="user-email"></p>
     <p class="hint">같은 계정으로 로그인한 모든 기기가 같은 학습 기록을 공유합니다.</p>
     <div class="start-row">
+      <button id="btn-toggle-pw" class="ghost">비밀번호 변경</button>
       <button id="btn-logout" class="ghost">로그아웃</button>
     </div>
-  </div>
-  <div class="panel">
-    <h2>비밀번호 변경</h2>
-    <div class="pw-form">
+    <div class="pw-form hidden" id="pw-form">
       <label class="login-field">현재 비밀번호<input type="password" id="pw-current" autocomplete="current-password"></label>
       <label class="login-field">새 비밀번호 (6자 이상)<input type="password" id="pw-new" autocomplete="new-password"></label>
       <label class="login-field">새 비밀번호 확인<input type="password" id="pw-new2" autocomplete="new-password"></label>
-      <div class="start-row"><button id="btn-change-pw" class="ghost">변경</button></div>
+      <div class="start-row"><button id="btn-change-pw" class="primary">변경</button><button id="btn-cancel-pw" class="ghost">취소</button></div>
       <p id="pw-msg" class="login-msg"></p>
     </div>
   </div>
@@ -371,6 +369,6 @@
 </section>
 
 <script type="module" src="firebase.js?v=28e91982"></script>
-<script type="module" src="app.js?v=7ee59235"></script>
+<script type="module" src="app.js?v=7b6142c0"></script>
 </body>
 </html>

@@ -1657,7 +1657,7 @@ async function doChangePassword() {
   const msg = document.getElementById("pw-msg"); msg.textContent = "";
   if (!cur || !nw) { msg.textContent = "현재 비밀번호와 새 비밀번호를 입력하세요."; return; }
   if (nw !== nw2) { msg.textContent = "새 비밀번호가 서로 다릅니다."; return; }
-  try { await FB.changePassword(cur, nw); msg.textContent = "비밀번호를 바꿨습니다."; ["pw-current", "pw-new", "pw-new2"].forEach(id => document.getElementById(id).value = ""); }
+  try { await FB.changePassword(cur, nw); ["pw-current", "pw-new", "pw-new2"].forEach(id => document.getElementById(id).value = ""); document.getElementById("pw-form").classList.add("hidden"); alert("비밀번호를 바꿨습니다."); }
   catch (e) { msg.textContent = FB.authMessage(e); }
 }
 async function doResetPassword() {
@@ -1782,6 +1782,8 @@ async function init() {
   document.getElementById("btn-pending-logout").onclick = () => FB.logout();
   document.getElementById("btn-pending-refresh").onclick = () => bootUserData();
   document.getElementById("btn-change-pw").onclick = doChangePassword;
+  document.getElementById("btn-toggle-pw").onclick = () => { document.getElementById("pw-form").classList.remove("hidden"); document.getElementById("pw-current").focus(); };
+  document.getElementById("btn-cancel-pw").onclick = () => { document.getElementById("pw-form").classList.add("hidden"); document.getElementById("pw-msg").textContent = ""; ["pw-current", "pw-new", "pw-new2"].forEach(id => document.getElementById(id).value = ""); };
   ["login-email", "login-pw"].forEach(id =>
     document.getElementById(id).addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); }));
   document.getElementById("btn-reset-pw").onclick = doResetPassword;

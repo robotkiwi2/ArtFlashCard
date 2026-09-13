@@ -540,4 +540,4 @@ nav button { display: inline-flex; align-items: center; gap: 6px; }
 
 .major-badge { font-size: 0.75rem; font-weight: normal; color: var(--brand); border: 1px solid var(--brand); border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: middle; }
 .login-links { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
-.pw-form { display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
+.pw-form { display: flex; flex-direction: column; gap: 8px; max-width: 420px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--panel-border); }
