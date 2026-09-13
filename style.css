@@ -493,11 +493,24 @@ nav button { display: inline-flex; align-items: center; gap: 6px; }
 .exam-q-nums button { min-width: 34px; padding: 5px 0; border: 1px solid var(--chip-border); background: var(--chip-bg);
   color: var(--fg); border-radius: 8px; font-size: 0.85rem; cursor: pointer; }
 .exam-q-nums button.active { background: var(--brand); color: var(--brand-fg); border-color: var(--brand); }
-.exam-q-panel { padding: 10px; background: #fff; }   /* 시험지는 항상 흰 종이 위에 */
-.exam-q-panel img { display: block; width: 100%; height: auto; }
+/* 시험지는 항상 흰 종이 위에. 확대하면 패널 안에서 스크롤한다 */
+.exam-q-panel { padding: 6px; background: #fff; border: 1px solid var(--panel-border); border-radius: 10px;
+  overflow: auto; max-height: 72vh; margin-bottom: 10px; touch-action: pan-x pan-y pinch-zoom; -webkit-overflow-scrolling: touch; }
+.exam-q-panel img, .peek-box .exam-q-panel img { display: block; width: 100%; max-width: none; max-height: none; height: auto; }
+.zoom-bar { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; flex-wrap: wrap; }
+.zoom-bar .zoom-val { min-width: 44px; text-align: center; font-size: 0.85rem; color: var(--muted); }
+.zoom-bar .hint { font-size: 0.75rem; }
 .exam-nav { display: flex; justify-content: center; gap: 14px; }
 
 .src-link { border: 1px solid var(--brand); background: none; color: var(--brand); border-radius: 999px;
   padding: 1px 8px; font-size: 0.78rem; cursor: pointer; }
 .src-link:hover { background: var(--hover-bg); }
-.exam-peek-box { width: min(960px, 100%); }
+.exam-peek-box { width: min(1100px, 100%); max-height: 96vh; padding: 10px 10px 12px; }
+.exam-peek-box .exam-q-panel { max-height: calc(96vh - 110px); margin-bottom: 0; }
+#exam-peek.peek { padding: 6px; }
+@media (max-width: 640px) {
+  .exam-peek-box { border-radius: 8px; padding: 8px 6px 10px; }
+  .exam-peek-box .peek-bar { top: -8px; }
+  .exam-peek-box .zoom-bar .hint { display: none; }
+  .exam-q-panel { padding: 2px; }
+}

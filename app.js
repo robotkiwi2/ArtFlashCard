@@ -853,6 +853,53 @@ function srcTag(c) {
   });
   return `<div class="src">기출 ${s.length}회 · ${items.join(", ")}</div>`;
 }
+// 문항 이미지 확대: 배율은 이미지 폭(%)으로 주고, 넘치는 부분은 패널 안에서 스크롤한다.
+const ZOOM_STEPS = [1, 1.5, 2, 3];
+function zoomBar(prefix) {
+  return `<div class="zoom-bar">
+    <button type="button" class="mini" data-zoom="out" data-for="${prefix}">−</button>
+    <span class="zoom-val" id="${prefix}-zoom-val">100%</span>
+    <button type="button" class="mini" data-zoom="in" data-for="${prefix}">＋</button>
+    <button type="button" class="mini" data-zoom="fit" data-for="${prefix}">맞춤</button>
+    <span class="hint">두 번 탭: 확대/원래대로 · 손가락 벌려 확대도 됩니다</span>
+  </div>`;
+}
+function setZoom(prefix, z) {
+  const panel = document.getElementById(prefix + "-panel");
+  const img = panel.querySelector("img");
+  img.style.width = (z * 100) + "%";
+  panel.dataset.zoom = z;
+  const v = document.getElementById(prefix + "-zoom-val"); if (v) v.textContent = Math.round(z * 100) + "%";
+}
+function stepZoom(prefix, dir) {
+  const cur = +(document.getElementById(prefix + "-panel").dataset.zoom || 1);
+  if (dir === "fit") return setZoom(prefix, 1);
+  const i = ZOOM_STEPS.indexOf(cur);
+  const n = dir === "in" ? Math.min(i + 1, ZOOM_STEPS.length - 1) : Math.max(i - 1, 0);
+  setZoom(prefix, ZOOM_STEPS[n < 0 ? 0 : n]);
+}
+function wireDoubleTap(prefix) {
+  const panel = document.getElementById(prefix + "-panel");
+  let last = 0;
+  panel.addEventListener("click", e => {
+    const now = Date.now();
+    if (now - last < 320) {
+      const cur = +(panel.dataset.zoom || 1);
+      const rect = panel.getBoundingClientRect();
+      const rx = (e.clientX - rect.left + panel.scrollLeft) / panel.scrollWidth;
+      const ry = (e.clientY - rect.top + panel.scrollTop) / panel.scrollHeight;
+      const z = cur > 1 ? 1 : 2;
+      setZoom(prefix, z);
+      // 탭한 지점이 계속 보이도록 스크롤 위치를 맞춘다
+      requestAnimationFrame(() => {
+        panel.scrollLeft = rx * panel.scrollWidth - (e.clientX - rect.left);
+        panel.scrollTop = ry * panel.scrollHeight - (e.clientY - rect.top);
+      });
+    }
+    last = now;
+  });
+}
+
 // 학습 중에도 세션을 깨지 않도록 문항은 겹창으로 띄운다
 function openExamPeek(id, idx) {
   const entry = EXAMS && EXAMS.find(e => e.id === id);
@@ -865,14 +912,17 @@ function openExamPeek(id, idx) {
     el.innerHTML = `<div class="peek-box exam-peek-box">
         <div class="peek-bar"><b id="exam-peek-title"></b><span class="peek-path"></span>
           <button type="button" class="ghost" id="exam-peek-close">닫기</button></div>
-        <div class="exam-q-panel"><img id="exam-peek-img" alt="기출 문항"></div>
+        ${zoomBar("exam-peek")}
+        <div class="exam-q-panel" id="exam-peek-panel"><img id="exam-peek-img" alt="기출 문항"></div>
       </div>`;
     document.body.appendChild(el);
+    wireDoubleTap("exam-peek");
     el.querySelector("#exam-peek-close").onclick = () => el.classList.add("hidden");
     el.addEventListener("click", e => { if (e.target === el) el.classList.add("hidden"); });
   }
   el.querySelector("#exam-peek-title").textContent = `${entry.title} ${q.n}번${q.points ? ` (${q.points}점)` : ""}`;
   el.querySelector("#exam-peek-img").src = q.img;
+  setZoom("exam-peek", 1);
   el.classList.remove("hidden");
   el.querySelector(".peek-box").scrollTop = 0;
 }
@@ -1376,6 +1426,7 @@ function renderExamQ() {
   document.getElementById("exam-progress").textContent = `${entry.title} · ${q.n}번 / ${entry.count}문항${q.points ? ` · ${q.points}점` : ""}`;
   const img = document.getElementById("exam-q-img");
   img.src = q.img; img.alt = `${q.n}번 문항`;
+  setZoom("exam-q", 1);
   document.querySelectorAll("#exam-q-nums button").forEach(b => b.classList.toggle("active", +b.dataset.i === idx));
   document.getElementById("btn-exam-prev").disabled = idx === 0;
   document.getElementById("btn-exam-next").disabled = idx === entry.questions.length - 1;
@@ -1503,6 +1554,12 @@ async function init() {
     const b = e.target.closest("button"); if (b) { exam.idx = +b.dataset.i; renderExamQ(); }
   });
   document.getElementById("btn-exam-back").onclick = () => { exam = null; renderExamList(); };
+  document.getElementById("exam-q-nums").insertAdjacentHTML("afterend", zoomBar("exam-q"));
+  wireDoubleTap("exam-q");
+  document.addEventListener("click", e => {
+    const b = e.target.closest && e.target.closest("[data-zoom]");
+    if (b) stepZoom(b.dataset.for, b.dataset.zoom);
+  });
   document.getElementById("btn-exam-prev").onclick = () => examStep(-1);
   document.getElementById("btn-exam-next").onclick = () => examStep(1);
   document.addEventListener("keydown", e => {
