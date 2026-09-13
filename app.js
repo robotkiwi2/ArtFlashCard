@@ -6,6 +6,18 @@ let LINKS = new Map();          // 표제어 → 관계 목록 (data/links.csv)
 let selectedSubject = "";       // "" = 전체 과목 (단일 선택)
 let filters = { 유형: new Set(), 시대: new Set(), 태그: new Set(), 중요도: new Set() };
 let session = null;             // { queue, idx, mode, correct, wrongCards }
+// 전공 패키지. 한 번에 전공 하나만 활성화하고, 교육학(common)은 항상 함께 싣는다.
+let USER = null;                // users/{uid} 문서 ({ majors: [...] })
+let MAJOR = "";                 // 활성 전공 id (예: "art")
+let PKGS = [];                  // 함께 싣는 패키지 순서: ["common", MAJOR]
+let CONFIG = {};                // { [pkg]: config.json }
+const MAJOR_KEY = "flashcard-major-v1";
+const APP_TITLE = "중등 임용 플래시카드";
+function majorConfig() { return CONFIG[MAJOR] || {}; }
+function subjectAbbr(name) {
+  for (const pkg of PKGS) { const m = (CONFIG[pkg] || {}).subjectAbbr || {}; if (m[name]) return m[name]; }
+  return name;
+}
 
 const LS_KEY = "flashcard-stats-v1";
 const FS_KEY = "flashcard-fontsize-v1";
@@ -57,16 +69,21 @@ function parseCSV(text) {
 }
 
 async function loadCards() {
-  const text = await FB.loadBundle("cards");   // Firestore 번들 (로그인 필요). 해시가 같으면 로컬 캐시
-  const rows = parseCSV(text);
-  const header = rows[0];
-  CARDS = rows.slice(1).map(r => {
-    const o = {};
-    header.forEach((h, i) => o[h.trim()] = (r[i] || "").trim());
-    o.태그목록 = o.태그 ? o.태그.split(";").map(t => t.trim()).filter(Boolean) : [];
-    return o;
-  });
+  CARDS = []; CONFIG = {};
+  for (const pkg of PKGS) {
+    try { CONFIG[pkg] = JSON.parse(await FB.loadBundle(pkg, "config")); } catch { CONFIG[pkg] = {}; }
+    const text = await FB.loadBundle(pkg, "cards");   // Firestore 번들 (허용된 전공만). 해시가 같으면 로컬 캐시
+    const rows = parseCSV(text);
+    const header = rows[0];
+    rows.slice(1).forEach(r => {
+      const o = { pkg };
+      header.forEach((h, i) => o[h.trim()] = (r[i] || "").trim());
+      o.태그목록 = o.태그 ? o.태그.split(";").map(t => t.trim()).filter(Boolean) : [];
+      CARDS.push(o);
+    });
+  }
 }
+function cardPkg(id) { const c = CARDS.find(x => x.id === String(id)); return c ? c.pkg : MAJOR; }
 
 // ===== 관계 (data/links.csv) =====
 // 카드에 관계를 심지 않고 별도 테이블로 둔다. 관계 종류가 늘어도 카드 스키마는 그대로다.
@@ -87,11 +104,11 @@ const REL_REVERSE = {
 
 async function loadLinks() {
   LINKS = new Map();   // 표제어 → [{ rel, other, memo }]
-  let text;
-  try { text = await FB.loadBundle("links"); }
-  catch { return; }
-
-  const rows = parseCSV(text);
+  let rows = [];
+  for (const pkg of PKGS) {
+    try { const t = await FB.loadBundle(pkg, "links"); rows = rows.concat(parseCSV(t).slice(1)); } catch {}
+  }
+  rows = [[]].concat(rows);   // 아래 코드가 첫 행을 머리글로 건너뛴다
   const names = new Set(CARDS.map(c => c.표제어));
   const missing = [];
   const push = (key, rel, other, memo) => {
@@ -118,13 +135,23 @@ async function loadLinks() {
 // 오프라인이어도 화면이 뜬다. 채점할 때마다 그 카드 항목만 클라우드에 올리고,
 // 로그인·재접속 때 로컬과 클라우드를 카드별 최신 시각(last) 기준으로 합친다.
 let currentUser = null;
-function statsKey() { return currentUser ? `${LS_KEY}:${currentUser.uid}` : LS_KEY; }
-function loadStats() {
-  try { return JSON.parse(localStorage.getItem(statsKey())) || {}; }
-  catch { return {}; }
+// 패키지별로 나눠 저장한다(progress/{uid}/pkgs/{pkg}). 전공을 바꿔도 다른 전공·교육학 기록이 그대로 남는다.
+function statsKey(pkg) { return `${LS_KEY}:${currentUser ? currentUser.uid : "anon"}:${pkg}`; }
+function loadPkgStats(pkg) {
+  try { return JSON.parse(localStorage.getItem(statsKey(pkg))) || {}; } catch { return {}; }
 }
-function storeStats(stats) {
-  try { localStorage.setItem(statsKey(), JSON.stringify(stats)); } catch {}
+function storePkgStats(pkg, stats) {
+  try { localStorage.setItem(statsKey(pkg), JSON.stringify(stats)); } catch {}
+}
+function loadStats() {   // 활성 패키지들의 기록을 하나로 합쳐 돌려준다 (카드 id 는 패키지 간에 겹치지 않음)
+  const out = {};
+  PKGS.forEach(pkg => Object.assign(out, loadPkgStats(pkg)));
+  return out;
+}
+function storeStats(stats) {   // 합쳐진 기록을 카드의 패키지대로 나눠 저장
+  const by = {}; PKGS.forEach(p => by[p] = {});
+  Object.keys(stats).forEach(id => { const p = cardPkg(id); (by[p] || (by[p] = {}))[id] = stats[id]; });
+  Object.keys(by).forEach(p => storePkgStats(p, by[p]));
 }
 function newer(a, b) {   // last 가 더 최근인 쪽. 없으면 있는 쪽, 둘 다 없으면 시도 수가 많은 쪽
   if (!a) return b; if (!b) return a;
@@ -151,28 +178,45 @@ async function resyncIfStale() {
   if (!currentUser || Date.now() - lastSyncAt < SYNC_MIN_GAP) return;
   await syncProgress();
 }
+// 예전(전공 분리 이전) 로컬 기록: flashcard-stats-v1[:uid] 한 덩어리. 교육학 카드는 id 앞에 c 가 붙었다.
+function takeLegacyStats() {
+  const keys = [LS_KEY, currentUser ? `${LS_KEY}:${currentUser.uid}` : null].filter(Boolean);
+  const out = {}; let found = false;
+  keys.forEach(k => {
+    try {
+      const v = JSON.parse(localStorage.getItem(k));
+      if (v && Object.keys(v).length) { found = true; Object.keys(v).forEach(id => {
+        const nid = CARDS.some(c => c.id === id) ? id : (CARDS.some(c => c.id === "c" + id) ? "c" + id : null);
+        if (nid) out[nid] = v[id];
+      }); }
+    } catch {}
+  });
+  return found ? { stats: out, keys } : null;
+}
 async function doSyncProgress() {
-  let local = loadStats();
-  let legacy = null;
-  try { legacy = JSON.parse(localStorage.getItem(LS_KEY)); } catch {}
-  if (legacy && Object.keys(legacy).length) local = mergeStats(local, legacy);
-
-  let remote = null;
-  try { remote = await FB.loadProgress(currentUser.uid); }
-  catch (e) { console.warn("[sync] 클라우드 기록을 읽지 못함 — 로컬 기록으로 진행", e); storeStats(local); return; }
-
-  const merged = mergeStats(local, remote || {});
-  storeStats(merged);
-  try {
-    if (!remote) await FB.writeProgress(currentUser.uid, merged);
-    else {
-      // 로컬이 이긴 카드만 올린다. 문서 전체를 덮어쓰면 읽고 쓰는 사이 다른 기기가 쓴 항목이 사라질 수 있다.
-      const won = {};
-      Object.keys(merged).forEach(id => { if (merged[id] !== remote[id]) won[id] = merged[id]; });
-      if (Object.keys(won).length) await FB.saveProgressEntries(currentUser.uid, won);
+  const legacy = takeLegacyStats();
+  for (const pkg of PKGS) {
+    let local = loadPkgStats(pkg);
+    if (legacy) {
+      const part = {}; Object.keys(legacy.stats).forEach(id => { if (cardPkg(id) === pkg) part[id] = legacy.stats[id]; });
+      local = mergeStats(local, part);
     }
-  } catch (e) { console.warn("[sync] 클라우드 기록 저장 실패", e); return; }
-  if (legacy) { try { localStorage.removeItem(LS_KEY); } catch {} }
+    let remote = null;
+    try { remote = await FB.loadProgress(currentUser.uid, pkg); }
+    catch (e) { console.warn(`[sync] ${pkg} 클라우드 기록을 읽지 못함 — 로컬 기록으로 진행`, e); storePkgStats(pkg, local); continue; }
+    const merged = mergeStats(local, remote || {});
+    storePkgStats(pkg, merged);
+    try {
+      if (!remote) await FB.writeProgress(currentUser.uid, pkg, merged);
+      else {
+        // 로컬이 이긴 카드만 올린다. 문서 전체를 덮어쓰면 읽고 쓰는 사이 다른 기기가 쓴 항목이 사라질 수 있다.
+        const won = {};
+        Object.keys(merged).forEach(id => { if (merged[id] !== remote[id]) won[id] = merged[id]; });
+        if (Object.keys(won).length) await FB.saveProgressEntries(currentUser.uid, pkg, won);
+      }
+    } catch (e) { console.warn(`[sync] ${pkg} 클라우드 기록 저장 실패`, e); }
+  }
+  if (legacy) legacy.keys.forEach(k => { try { localStorage.removeItem(k); } catch {} });
 }
 
 // box = 연속 정답 횟수(0~5). 맞히면 오르고 틀리면 0으로 초기화된다.
@@ -180,8 +224,7 @@ async function doSyncProgress() {
 // hintUsed = 힌트(글자 수·초성)를 보고 맞힌 경우. 완전한 인출이 아니므로 box를 올리지 않아
 // 복습 주기를 짧게 유지한다(오답으로 되돌리지는 않는다).
 function saveResult(cardId, isCorrect, hintUsed) {
-  const stats = loadStats();
-  const s = stats[cardId] || { tries: 0, correct: 0, box: 0 };
+  const s = loadPkgStats(cardPkg(cardId))[cardId] || { tries: 0, correct: 0, box: 0 };
   s.tries++;
   if (isCorrect) {
     s.correct++;
@@ -192,9 +235,9 @@ function saveResult(cardId, isCorrect, hintUsed) {
     s.wrong = true;
   }
   s.last = new Date().toISOString();   // 같은 날 안에서도 순서를 가리려면 초 단위가 필요하다
-  stats[cardId] = s;
-  storeStats(stats);
-  if (currentUser) FB.saveProgressEntry(currentUser.uid, cardId, s).catch(e => console.warn("[sync] 저장 실패", e));
+  const pkg = cardPkg(cardId);
+  const ps = loadPkgStats(pkg); ps[cardId] = s; storePkgStats(pkg, ps);
+  if (currentUser) FB.saveProgressEntries(currentUser.uid, pkg, { [cardId]: s }).catch(e => console.warn("[sync] 저장 실패", e));
 }
 
 function wrongCards() {
@@ -591,7 +634,7 @@ window.addEventListener("message", e => {
 });
 
 // ===== 화면 전환 =====
-const screens = ["login", "setup", "quiz", "result", "stats", "map", "me", "exam"];
+const screens = ["login", "pending", "setup", "quiz", "result", "stats", "map", "me", "exam"];
 function show(name) {
   screens.forEach(s => {
     const el = document.getElementById("screen-" + s);
@@ -602,7 +645,7 @@ function show(name) {
     el.classList.toggle("hidden", !on);
   });
   // 학습 수행 중·로그인 전에는 상단 네비게이션을 감춘다
-  document.getElementById("main-nav").classList.toggle("hidden", name === "quiz" || name === "login");
+  document.getElementById("main-nav").classList.toggle("hidden", name === "quiz" || name === "login" || name === "pending");
   document.getElementById("btn-settings").classList.toggle("hidden", name === "quiz");
   ["setup", "stats", "map", "me", "exam"].forEach(n => document.getElementById("nav-" + n).classList.toggle("active", name === n));
 }
@@ -1061,7 +1104,7 @@ async function sendReport() {
   const btn = document.getElementById("btn-report-send");
   btn.disabled = true;
   try {
-    await FB.addReport({ cardId: String(c.id), 표제어: c.표제어, mode: session.mode, reasons, note });
+    await FB.addReport({ pkg: c.pkg, major: MAJOR, cardId: String(c.id), 표제어: c.표제어, mode: session.mode, reasons, note });
     markReported(c.id);
     updateReportUI();
   } catch (e) {
@@ -1142,21 +1185,24 @@ const OV_BUCKETS = [
 
 // 예상 점수: 시험 총점 80점(전공A 40 + 전공B 40) × 진행 비율 × 정답률.
 // 카드마다 중요도 가중치를 둔다 — 시험은 핵심(1등급)에서 더 많이 나오므로 그쪽 진도·정답이 점수에 더 크게 잡힌다.
-const EXAM_TOTAL = 80;
 const IMP_WEIGHT = { "1": 3, "2": 2, "3": 1, "4": 0.5 };
+// 패키지(교육학 20점, 전공 80점)마다 따로 계산해 합산한다.
 function estimateScore(stats) {
-  let wAll = 0, wSeen = 0, wAcc = 0;
-  CARDS.forEach(c => {
-    const w = IMP_WEIGHT[c.중요도] || 1;
-    wAll += w;
-    const s = stats[c.id];
-    if (!s || !s.tries) return;
-    wSeen += w;
-    wAcc += w * (s.correct / s.tries);
+  const parts = PKGS.map(pkg => {
+    let wAll = 0, wSeen = 0, wAcc = 0;
+    CARDS.filter(c => c.pkg === pkg).forEach(c => {
+      const w = IMP_WEIGHT[c.중요도] || 1;
+      wAll += w;
+      const s = stats[c.id];
+      if (!s || !s.tries) return;
+      wSeen += w;
+      wAcc += w * (s.correct / s.tries);
+    });
+    const progress = wAll ? wSeen / wAll : 0, accuracy = wSeen ? wAcc / wSeen : 0;
+    const total = +((CONFIG[pkg] || {}).examTotal) || 0;
+    return { pkg, label: (CONFIG[pkg] || {}).examLabel || pkg, total, progress, accuracy, score: Math.round(total * progress * accuracy) };
   });
-  const progress = wAll ? wSeen / wAll : 0;          // 가중 진행 비율
-  const accuracy = wSeen ? wAcc / wSeen : 0;         // 가중 정답률
-  return { score: Math.round(EXAM_TOTAL * progress * accuracy), progress, accuracy };
+  return { parts, total: parts.reduce((a, p) => a + p.total, 0), score: parts.reduce((a, p) => a + p.score, 0) };
 }
 
 function renderOverview() {
@@ -1166,8 +1212,8 @@ function renderOverview() {
   const estHtml = `
     <div class="est">
       <div class="est-label">현재 상태 예상 점수</div>
-      <div class="est-score">${est.score}<small>점 / ${EXAM_TOTAL}점</small></div>
-      <div class="est-sub">진행 ${Math.round(est.progress * 100)}% × 정답률 ${Math.round(est.accuracy * 100)}%
+      <div class="est-score">${est.score}<small>점 / ${est.total}점</small></div>
+      <div class="est-sub">${est.parts.map(p => `${esc(p.label)} ${p.score}/${p.total}점 (진행 ${Math.round(p.progress * 100)}% × 정답률 ${Math.round(p.accuracy * 100)}%)`).join(" + ")}
         <span class="hint">(중요도 1등급 카드에 더 큰 가중치)</span></div>
     </div>`;
   const b = { done: 0, familiar: 0, learning: 0, wrong: 0, new: 0 };
@@ -1245,8 +1291,6 @@ function renderStats() {
 // ===== 약점 지도 (과목x유형x시대 영역별 그리드) =====
 // 카드를 성격이 뚜렷한 100여 개 영역으로 나누고, 영역마다 학습량·정답률을 색으로 보여준다.
 // 칸을 누르면 그 영역만으로 바로 학습을 시작한다(설정 화면을 거치지 않음).
-const SUBJ_ABBR = { "한국미술사": "한국", "서양미술사": "서양", "동양미술사": "동양",
-                    "미술교육학": "교육", "일반교육학": "일반교육", "표현기법": "표현" };
 // 목표: 영역 하나당 카드 수를 비슷하게(AREA_TARGET 안팎) 맞춘다.
 // 과목x유형x시대로 먼저 나눈 뒤, 시대별 조각이 너무 작으면(< AREA_MERGE_MIN) 시대순으로
 // 이웃과 합치고, 너무 크면(> AREA_SPLIT_MAX) 표제어 가나다순으로 잘라 여러 조각으로 쪼갠다.
@@ -1349,7 +1393,7 @@ function renderMap() {
     const score = scoreArea(area);
     const color = areaColor(score);
     const opacity = (0.4 + 0.6 * score.seenRatio).toFixed(2);
-    const subj = SUBJ_ABBR[area.과목] || area.과목;
+    const subj = subjectAbbr(area.과목);
     const sub = [area.eraLabel, area.part].filter(Boolean).join(" ");
     const label = sub ? `${subj}·${area.유형}<br>${sub}` : `${subj}·${area.유형}`;
     const title = `${area.과목} · ${area.유형}${area.eraLabel ? " · " + area.eraLabel : ""}` +
@@ -1392,7 +1436,7 @@ function appVersion() {
   return m ? m.content : "";
 }
 function dataVersion() {
-  return FB.cachedBundleLabel("cards") || (FB.cachedBundleVersion("cards") ? "(구버전 라벨 없음)" : "-");
+  return PKGS.map(p => `${(CONFIG[p] || {}).name || p} ${FB.cachedBundle(p, "cards").label || "-"}`).join(" · ");
 }
 function runningAppHash() {
   const m = /app\.js\?v=([0-9a-f]+)/.exec(document.querySelector('script[src*="app.js"]').src);
@@ -1410,9 +1454,12 @@ async function checkForUpdate() {
   lastUpdateCheck = Date.now();
   const found = [];
   try {
-    const [appHash, cardsV] = await Promise.all([latestAppHash(), currentUser ? FB.bundleVersion("cards") : null]);
+    const appHash = await latestAppHash();
     if (appHash && appHash !== runningAppHash()) found.push("앱");
-    if (cardsV && cardsV !== FB.cachedBundleVersion("cards")) found.push("카드");
+    if (currentUser) for (const pkg of PKGS) {
+      const v = await FB.bundleVersion(pkg, "cards");
+      if (v && v !== (FB.cachedBundle(pkg, "cards").v || null)) { found.push("카드"); break; }
+    }
   } catch (e) { console.warn("[update] 확인 실패", e); return; }
   if (!found.length) return;
   updatePending = found.join("·");
@@ -1435,7 +1482,7 @@ let EXAMS = null, exam = null;   // exam = { entry, idx }
 async function loadExams() {
   if (EXAMS) return EXAMS;
   try {
-    const res = await fetch(`exam/index.json?_=${Date.now()}`, { cache: "no-store" });
+    const res = await fetch(`exam/${MAJOR}/index.json?_=${Date.now()}`, { cache: "no-store" });
     EXAMS = res.ok ? await res.json() : [];
   } catch { EXAMS = []; }   // 오프라인 등. 서비스 워커 캐시가 있으면 fetch 가 그걸 돌려준다
   return EXAMS;
@@ -1464,7 +1511,7 @@ const ANSWERS = {};
 async function loadAnswers(id) {
   if (id in ANSWERS) return ANSWERS[id];
   try {
-    const res = await fetch(`exam/answers/${id}.json?_=${Date.now()}`, { cache: "no-store" });
+    const res = await fetch(`exam/${MAJOR}/answers/${id}.json?_=${Date.now()}`, { cache: "no-store" });
     ANSWERS[id] = res.ok ? await res.json() : null;
   } catch { ANSWERS[id] = null; }
   return ANSWERS[id];
@@ -1579,6 +1626,40 @@ async function doLogin() {
   catch (e) { setLoginMsg(FB.authMessage(e), true); }
   finally { btn.disabled = false; }
 }
+// 전공 전환 칩 (허용 전공이 둘 이상일 때만 설정에 노출)
+function buildMajorChips(majors) {
+  const box = document.getElementById("major-chips"), wrap = document.getElementById("major-block");
+  if (!box) return;
+  wrap.classList.toggle("hidden", majors.length < 2);
+  box.innerHTML = "";
+  majors.forEach(m => {
+    const chip = document.createElement("span");
+    chip.className = "chip" + (m === MAJOR ? " on" : "");
+    chip.textContent = m;
+    chip.onclick = () => { if (m === MAJOR) return; try { localStorage.setItem(MAJOR_KEY, m); } catch {} location.reload(); };
+    box.appendChild(chip);
+  });
+}
+async function doSignup() {
+  const email = document.getElementById("signup-email").value.trim();
+  const pw = document.getElementById("signup-pw").value, pw2 = document.getElementById("signup-pw2").value;
+  const msg = document.getElementById("signup-msg");
+  msg.textContent = "";
+  if (!email || !pw) { msg.textContent = "이메일과 비밀번호를 입력하세요."; return; }
+  if (pw !== pw2) { msg.textContent = "비밀번호가 서로 다릅니다."; return; }
+  const btn = document.getElementById("btn-signup"); btn.disabled = true;
+  try { await FB.signup(email, pw); }   // 성공하면 onAuth → 승인 대기 화면
+  catch (e) { msg.textContent = FB.authMessage(e); }
+  finally { btn.disabled = false; }
+}
+async function doChangePassword() {
+  const cur = document.getElementById("pw-current").value, nw = document.getElementById("pw-new").value, nw2 = document.getElementById("pw-new2").value;
+  const msg = document.getElementById("pw-msg"); msg.textContent = "";
+  if (!cur || !nw) { msg.textContent = "현재 비밀번호와 새 비밀번호를 입력하세요."; return; }
+  if (nw !== nw2) { msg.textContent = "새 비밀번호가 서로 다릅니다."; return; }
+  try { await FB.changePassword(cur, nw); msg.textContent = "비밀번호를 바꿨습니다."; ["pw-current", "pw-new", "pw-new2"].forEach(id => document.getElementById(id).value = ""); }
+  catch (e) { msg.textContent = FB.authMessage(e); }
+}
 async function doResetPassword() {
   const email = document.getElementById("login-email").value.trim();
   if (!email) { setLoginMsg("재설정 메일을 받을 이메일을 먼저 입력하세요.", true); return; }
@@ -1588,16 +1669,40 @@ async function doResetPassword() {
 
 // 로그인한 사용자의 데이터(카드·관계·기록)를 읽어 학습하기 화면을 연다
 let dataLoaded = false;
+function pickMajor(majors) {
+  let saved = "";
+  try { saved = localStorage.getItem(MAJOR_KEY) || ""; } catch {}
+  return majors.includes(saved) ? saved : majors[0];
+}
+function applyTitles() {
+  const name = majorConfig().name || "";
+  document.title = name ? `${APP_TITLE} · ${name}` : APP_TITLE;
+  const badge = document.getElementById("major-badge");
+  if (badge) { badge.textContent = name; badge.classList.toggle("hidden", !name); }
+}
+function showPending() {
+  document.getElementById("pending-email").textContent = currentUser ? currentUser.email : "";
+  show("pending");
+}
 async function bootUserData() {
+  setLoginMsg("권한을 확인하는 중…");
+  try { USER = await FB.loadUser(currentUser.uid); }
+  catch (e) { console.error(e); setLoginMsg("권한 정보를 읽지 못했습니다: " + (e && e.message || e), true); return; }
+  const majors = (USER && USER.majors) || [];
+  if (!majors.length) { showPending(); return; }
+  MAJOR = pickMajor(majors);
+  PKGS = ["common", MAJOR];
+  buildMajorChips(majors);
   setLoginMsg("카드 데이터를 불러오는 중…");
   try {
-    if (!dataLoaded) { await loadCards(); await loadLinks(); await loadExams().catch(() => {}); dataLoaded = true; }
+    await loadCards(); await loadLinks(); EXAMS = null; exam = null; await loadExams().catch(() => {}); dataLoaded = true;
     await syncProgress();
   } catch (e) {
     console.error(e);
     setLoginMsg("데이터를 불러오지 못했습니다: " + (e && e.message || e), true);
     return;
   }
+  applyTitles();
   lastUpdateCheck = Date.now();   // 방금 받았으니 잠시 확인하지 않는다
   buildSubjectChips();
   rebuildDependentChips();     // 유형·시대·태그·중요도 전체 선택 상태로 시작
@@ -1671,6 +1776,12 @@ async function init() {
   });
 
   document.getElementById("btn-login").onclick = doLogin;
+  document.getElementById("btn-show-signup").onclick = () => { document.getElementById("login-form").classList.add("hidden"); document.getElementById("signup-form").classList.remove("hidden"); };
+  document.getElementById("btn-show-login").onclick = () => { document.getElementById("signup-form").classList.add("hidden"); document.getElementById("login-form").classList.remove("hidden"); };
+  document.getElementById("btn-signup").onclick = doSignup;
+  document.getElementById("btn-pending-logout").onclick = () => FB.logout();
+  document.getElementById("btn-pending-refresh").onclick = () => bootUserData();
+  document.getElementById("btn-change-pw").onclick = doChangePassword;
   ["login-email", "login-pw"].forEach(id =>
     document.getElementById(id).addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); }));
   document.getElementById("btn-reset-pw").onclick = doResetPassword;
@@ -1723,8 +1834,7 @@ async function init() {
   });
   document.getElementById("btn-reset").onclick = () => {
     if (confirm("모든 학습 기록을 삭제할까요? 모든 기기에서 지워지며 되돌릴 수 없습니다.")) {
-      storeStats({});
-      if (currentUser) FB.writeProgress(currentUser.uid, {}).catch(e => alert("클라우드 기록 삭제 실패: " + e));
+      PKGS.forEach(p => { storePkgStats(p, {}); if (currentUser) FB.writeProgress(currentUser.uid, p, {}).catch(e => alert("클라우드 기록 삭제 실패: " + e)); });
       renderMe(); updateWrongCount();
     }
   };
@@ -1749,8 +1859,9 @@ async function init() {
       document.getElementById("user-email").textContent = user.email || "";
       bootUserData();
     } else {
-      session = null;
+      session = null; USER = null; MAJOR = ""; PKGS = []; CARDS = [];
       document.getElementById("user-email").textContent = "";
+      applyTitles();
       setLoginMsg("");
       show("login");
     }
@@ -1758,7 +1869,7 @@ async function init() {
 }
 
 // 모듈 스코프라 콘솔·자동 테스트에서 상태를 볼 수 없어 읽기 전용 핸들을 둔다
-window.__app = { get CARDS() { return CARDS; }, get session() { return session; }, get user() { return currentUser; }, loadStats };
+window.__app = { get CARDS() { return CARDS; }, get session() { return session; }, get user() { return currentUser; }, get major() { return MAJOR; }, get config() { return CONFIG; }, loadStats };
 
 if ("serviceWorker" in navigator) {
   // 오프라인에서도 앱 껍데기가 뜨도록. 등록 실패는 무시한다(파일 프로토콜, 사설 모드 등)

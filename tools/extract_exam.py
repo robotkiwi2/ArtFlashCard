@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""기출문제 PDF 에서 문항별 이미지를 잘라 exam/<id>/qNN.png 와 exam/index.json 을 만든다.
+"""기출문제 PDF 에서 문항별 이미지를 잘라 exam/<전공>/<id>/qNN.jpg 와 exam/<전공>/index.json 을 만든다.
 
     python tools/extract_exam.py 2026A
 
@@ -13,7 +13,8 @@ from exam_segments import auto_segments
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PDF_DIR = os.path.join(os.path.dirname(ROOT), "미술전공", "기출문제")
-OUT = os.path.join(ROOT, "exam")
+MAJOR = "art"
+OUT = os.path.join(ROOT, "exam", MAJOR)
 ZOOM = 2.0
 COLS = {"L": (78, 420), "R": (422, 768), "F": (78, 768)}
 
@@ -152,7 +153,7 @@ def main(ids):
         questions = spec.get("questions") or sorted(auto_segments(doc).items())
         for n, segs in questions:
             img = render(doc, segs)
-            rel = f"exam/{eid}/q{n:02d}.jpg"
+            rel = f"exam/{MAJOR}/{eid}/q{n:02d}.jpg"
             img.save(os.path.join(ROOT, rel), "JPEG", quality=88, optimize=True)
             pg, col, y0, _ = segs[0]
             text = first_line(doc[pg - 1], col, y0)[:80] if spec.get("text", True) else ""

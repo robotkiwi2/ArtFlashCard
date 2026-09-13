@@ -1,0 +1,10 @@
+{
+  "id": "common",
+  "kind": "common",
+  "name": "교육학",
+  "examTotal": 20,
+  "examLabel": "교육학 (1교시)",
+  "subjectAbbr": {
+    "일반교육학": "교육학"
+  }
+}

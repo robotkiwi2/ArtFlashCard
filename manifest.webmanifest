@@ -1,6 +1,6 @@
 {
-  "name": "임용미술 플래시카드",
-  "short_name": "임용미술",
+  "name": "중등 임용 플래시카드",
+  "short_name": "임용 플래시카드",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

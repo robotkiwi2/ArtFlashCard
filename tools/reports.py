@@ -14,8 +14,14 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KEY = os.environ.get("FIREBASE_KEY") or os.path.join(os.path.dirname(ROOT), "firebase-admin-key.json")
 
 def load_cards():
-    with io.open(os.path.join(ROOT, "data/cards.csv"), encoding="utf-8-sig", newline="") as f:
-        return {r["id"]: r for r in csv.DictReader(f)}
+    out = {}
+    sub = os.path.join(ROOT, "subjects")
+    for pkg in os.listdir(sub):
+        p = os.path.join(sub, pkg, "cards.csv")
+        if os.path.exists(p):
+            with io.open(p, encoding="utf-8-sig", newline="") as f:
+                for r in csv.DictReader(f): out[r["id"]] = r
+    return out
 
 def main(argv):
     import firebase_admin

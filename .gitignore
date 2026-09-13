@@ -22,6 +22,9 @@ firebase-admin-key.json
 
 # 카드 원본 데이터 — 저장소에 올리지 않는다 (Firestore 로 배포, 로컬 사본은 OneDrive 가 보관)
 data/*.csv
+subjects/*/cards.csv
+subjects/*/links.csv
+subjects/*/idmap.json
 
 # 파이썬 캐시
 __pycache__/

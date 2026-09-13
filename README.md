@@ -1,12 +1,13 @@
-# ArtFlashCard
+# 중등 임용 플래시카드
 
-중등미술 임용고시 대비 웹 플래시카드. 정적 페이지 + Firebase(인증·Firestore)로 동작합니다.
+중등교사 임용시험 대비 웹 플래시카드. 정적 페이지 + Firebase(인증·Firestore)로 동작합니다.
+전공 패키지(`subjects/art` 등)와 공통 교육학 패키지(`subjects/common`)로 나뉘며, 사용자는 승인된 전공 하나를 활성화해 사용합니다.
 
 ## 특징
 
-- **데이터**: `data/cards.csv` 를 수정하고 `python tools/upload_firestore.py` 를 돌리면 카드가 갱신됩니다 (CSV 자체는 저장소에 올리지 않음)
-- **로그인**: Firebase Authentication(이메일/비밀번호). 계정은 Firebase 콘솔에서 관리자가 만들어 배포
-- **학습 기록**: Firestore `progress/{uid}` 에 사용자별 저장 → 폰·태블릿 어디서나 같은 기록. localStorage 는 캐시
+- **데이터**: `subjects/<패키지>/cards.csv` 를 수정하고 `python tools/upload_firestore.py [패키지]` 를 돌리면 갱신됩니다 (CSV 는 저장소에 올리지 않음)
+- **전공/권한**: 앱은 `common`(교육학) + 활성 전공 패키지를 함께 싣습니다. 사용자는 앱에서 가입할 수 있고, 관리자가 `python tools/grant_major.py 이메일 art` 로 전공을 승인해야 데이터를 볼 수 있습니다
+- **학습 기록**: Firestore `progress/{uid}/pkgs/{패키지}` 에 패키지별 저장 → 기기 간 동기화, 전공 전환 시에도 보존
 - **범위 선택**: 과목(단일) → 유형·시대·태그·중요도(복수, 기본 전체 선택)
 - **3가지 모드**: 설명 제시(기본) / 표제어 제시 / 이미지 제시
 - **자가 채점**: 답 공개 후 ⭕/❌ 로 채점 → 과목·유형·태그별 정답률 집계
@@ -15,11 +16,11 @@
 - **관련 항목**: 뒷면에서 같은 갈래 형제(태그 자동)와 관계(`data/links.csv`)를 펼쳐 볼 수 있음
 - **글자 크기 4단계**: 모바일 가독성을 위해 조절 가능하며 선택값이 유지됨
 
-## 데이터 스키마 (`data/cards.csv`)
+## 데이터 스키마 (`subjects/<패키지>/cards.csv`)
 
 | 컬럼 | 설명 |
 |---|---|
-| id | 고유 번호. **재부여 금지** — 학습 기록의 키입니다 |
+| id | 고유 번호. **재부여 금지** — 학습 기록의 키입니다. 패키지 간에 겹치지 않게(공통은 `c` 접두어) |
 | 표제어 | 카드의 정체 |
 | 표제어변형 | 한자·외국어 등 원어 표기 (없으면 빈 값) |
 | 축1~축4 | 이 카드가 물릴 수 있는 출제 각도. `라벨: 내용` 형식. **축1만 필수** |
@@ -36,7 +37,7 @@
 > 축 라벨은 12자 이내여야 배지로 표시되고, 콜론이 없으면 본문으로만 렌더됩니다.
 > 자세한 설계 근거와 유형별 권장 라벨은 [기획.md](기획.md) 참조.
 
-관계는 카드가 아니라 **`data/links.csv`**(출발·관계·도착·메모)에 둡니다. 한 행이 양방향으로
+관계는 카드가 아니라 **`subjects/<패키지>/links.csv`**(출발·관계·도착·메모)에 둡니다. 한 행이 양방향으로
 동작하며, 관계 종류가 늘어도 카드 스키마는 그대로입니다. 자세한 내용은 [기획.md](기획.md) 참조.
 
 백업: `data/cards.backup-v1.csv`(설명 단일 컬럼 시절), `data/cards.backup-v2.csv`(짝 컬럼 폐지 직전).
@@ -61,7 +62,8 @@ GitHub Pages: Settings → Pages → Source를 `main` 브랜치 `/ (root)` 로 �
 - 카드 업로드: 서비스 계정 키(콘솔 → 프로젝트 설정 → 서비스 계정 → 새 비공개 키)를
   저장소 **밖**에 `firebase-admin-key.json` 으로 두고 `pip install firebase-admin` 후
   `python tools/upload_firestore.py`. 키는 절대 커밋하지 않는다
-- 데이터 구조: `bundle/cards`·`bundle/links` (CSV 텍스트 조각 + 해시), `progress/{uid}` (카드별 기록), `reports` (카드 신고)
+- 데이터 구조: `bundle/{패키지}/files/{cards|links|config}` (텍스트 조각 + 해시), `progress/{uid}/pkgs/{패키지}` (카드별 기록), `users/{uid}` (majors 권한), `reports` (카드 신고)
+- 새 전공 추가: `subjects/<id>/{config.json, cards.csv, links.csv}` 와 `exam/<id>/` 를 만들고 업로드한 뒤 `grant_major.py` 로 사용자에게 부여
 - 신고 검토: 카드 뒷면 "이상해요" 로 들어온 신고를 `python tools/reports.py` 로 보고, 반영한 뒤 `--done 카드id` 로 닫는다
 
 기획 문서는 [기획.md](기획.md) 참조.

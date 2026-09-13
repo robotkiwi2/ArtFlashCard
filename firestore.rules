@@ -1,19 +1,32 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 카드 데이터: 로그인한 사용자만 읽기. 쓰기는 관리자 SDK(tools/upload_firestore.py)만.
-    match /bundle/{docId} {
-      allow read: if request.auth != null;
+    // 사용자 권한 문서. majors 는 관리자 SDK(tools/grant_major.py)만 바꾼다.
+    // 가입 직후 본인이 빈 문서를 한 번 만들 수 있다(승인 요청용) — majors 는 반드시 빈 배열.
+    function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function hasMajor(pkg) {
+      return request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && (pkg == "common" ? userDoc().majors.size() > 0 : pkg in userDoc().majors);
+    }
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.majors is list && request.resource.data.majors.size() == 0;
+      allow update, delete: if false;
+    }
+    // 카드 데이터: 허용된 전공만 읽기. common(교육학)은 전공이 하나라도 있으면 읽기. 쓰기는 관리자 SDK 만.
+    match /bundle/{pkg}/files/{docId} {
+      allow read: if hasMajor(pkg);
       allow write: if false;
     }
-    // 카드 신고: 로그인한 사용자가 본인 uid 로 새 문서를 만들 수만 있다. 읽기·수정은 관리자 SDK 로만.
+    // 학습 기록: 본인 것, 허용된 패키지만
+    match /progress/{uid}/pkgs/{pkg} {
+      allow read, write: if request.auth != null && request.auth.uid == uid && hasMajor(pkg);
+    }
+    // 카드 신고: 로그인한 사용자가 본인 uid 로 새 문서를 만들 수만 있다.
     match /reports/{reportId} {
       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
       allow read, update, delete: if false;
-    }
-    // 학습 기록: 본인 문서만 읽고 쓴다.
-    match /progress/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
     }
   }
 }

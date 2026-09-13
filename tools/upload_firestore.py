@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-"""data/cards.csv, data/links.csv 를 Firestore 의 bundle 컬렉션에 올린다.
+"""subjects/<패키지>/ 의 cards.csv, links.csv, config.json 을 Firestore bundle/<패키지>/files 에 올린다.
 
-    python tools/upload_firestore.py
+    python tools/upload_firestore.py            모든 패키지
+    python tools/upload_firestore.py art        하나만
 
 카드를 고친 뒤 이 스크립트를 한 번 돌리면 앱이 다음 실행 때 새 데이터를 받는다.
 (내용 해시가 바뀌면 앱의 로컬 캐시가 무효화된다.)
@@ -17,7 +18,8 @@ import datetime, hashlib, io, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KEY = os.environ.get("FIREBASE_KEY") or os.path.join(os.path.dirname(ROOT), "firebase-admin-key.json")
-FILES = {"cards": "data/cards.csv", "links": "data/links.csv"}
+SUBJECTS = os.path.join(ROOT, "subjects")
+FILES = {"cards": "cards.csv", "links": "links.csv", "config": "config.json"}
 CHUNK = 700_000   # Firestore 문서 한도 1 MiB 보다 넉넉히 작게 (UTF-8 바이트 기준)
 
 def chunks(text):
@@ -30,7 +32,7 @@ def chunks(text):
     if buf: out.append("".join(buf))
     return out
 
-def main():
+def main(pkgs):
     if not os.path.exists(KEY):
         print(f"서비스 계정 키가 없습니다: {KEY}"); return 1
     import firebase_admin
@@ -38,29 +40,30 @@ def main():
     firebase_admin.initialize_app(credentials.Certificate(KEY))
     db = firebase_admin.firestore.client()
 
-    for name, rel in FILES.items():
-        path = os.path.join(ROOT, rel)
-        raw = io.open(path, "rb").read().replace(b"\r\n", b"\n")
-        text = raw.decode("utf-8-sig")
-        v = hashlib.sha1(text.encode("utf-8")).hexdigest()[:12]
-        meta = db.collection("bundle").document(name).get()
-        if meta.exists and meta.to_dict().get("v") == v:
-            if not meta.to_dict().get("label"):   # 라벨 도입 이전 문서에는 라벨만 채운다
-                meta.reference.update({"label": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")})
-            print(f"{name}: 변경 없음 ({v})"); continue
-        parts = chunks(text)
-        batch = db.batch()
-        for i, t in enumerate(parts):
-            batch.set(db.collection("bundle").document(f"{name}_{i}"), {"t": t})
-        # 남아 있을 수 있는 옛 조각 제거
-        old_n = meta.to_dict().get("n", 0) if meta.exists else 0
-        for i in range(len(parts), old_n):
-            batch.delete(db.collection("bundle").document(f"{name}_{i}"))
-        label = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-        batch.set(db.collection("bundle").document(name), {"v": v, "n": len(parts), "label": label})
-        batch.commit()
-        print(f"{name}: 업로드 {len(parts)}조각, {len(raw):,} bytes ({v})")
+    pkgs = pkgs or sorted(d for d in os.listdir(SUBJECTS) if os.path.isdir(os.path.join(SUBJECTS, d)))
+    for pkg in pkgs:
+        files = db.collection("bundle").document(pkg).collection("files")
+        for name, rel in FILES.items():
+            path = os.path.join(SUBJECTS, pkg, rel)
+            if not os.path.exists(path): continue
+            raw = io.open(path, "rb").read().replace(b"\r\n", b"\n")
+            text = raw.decode("utf-8-sig")
+            v = hashlib.sha1(text.encode("utf-8")).hexdigest()[:12]
+            meta = files.document(name).get()
+            if meta.exists and meta.to_dict().get("v") == v:
+                print(f"{pkg}/{name}: 변경 없음 ({v})"); continue
+            parts = chunks(text)
+            batch = db.batch()
+            for i, t in enumerate(parts):
+                batch.set(files.document(f"{name}_{i}"), {"t": t})
+            old_n = meta.to_dict().get("n", 0) if meta.exists else 0
+            for i in range(len(parts), old_n):
+                batch.delete(files.document(f"{name}_{i}"))
+            label = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            batch.set(files.document(name), {"v": v, "n": len(parts), "label": label})
+            batch.commit()
+            print(f"{pkg}/{name}: 업로드 {len(parts)}조각, {len(raw):,} bytes ({v})")
     return 0
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))
