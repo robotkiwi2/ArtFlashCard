@@ -3,11 +3,13 @@
 
     python tools/extract_exam.py 2026A
 
-문항 영역은 EXAMS 에 손으로 적는다 (page, col, y0, y1). col: L/R/F(전면).
-PDF 는 2단 조판이라 자동 분할이 믿을 만하지 않아, 블록 좌표를 보고 정한 값이다.
+문항 영역은 exam_segments.auto_segments 가 문항 머리 위치로 자동으로 잡는다.
+결과가 어긋나는 시험지는 EXAMS 에 "questions" 로 (page, col, y0, y1) 을 손으로 적어 덮어쓴다. col: L/R/F(전면).
 """
 import io, json, os, re, sys
 import pymupdf
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from exam_segments import auto_segments
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PDF_DIR = os.path.join(os.path.dirname(ROOT), "미술전공", "기출문제")
@@ -71,6 +73,24 @@ EXAMS = {
             (12, [(7, "R", 136, 1005)]),
         ],
     },
+    "2024A": {"title": "2024학년도 전공A", "pdf": "2024미술A.pdf"},
+    "2024B": {"title": "2024학년도 전공B", "pdf": "2024미술B.pdf"},
+    "2023A": {"title": "2023학년도 전공A", "pdf": "2023_1차_미술_전공A.pdf"},
+    "2023B": {"title": "2023학년도 전공B", "pdf": "2023_1차_미술_전공B.pdf"},
+    "2022A": {"title": "2022학년도 전공A", "pdf": "2022_1차_미술_전공A.pdf"},
+    "2022B": {"title": "2022학년도 전공B", "pdf": "2022_1차_미술_전공B.pdf"},
+    "2021A": {"title": "2021학년도 전공A", "pdf": "2021_1차_미술_전공A.pdf"},
+    "2021B": {"title": "2021학년도 전공B", "pdf": "2021_B.pdf"},
+    "2020A": {"title": "2020학년도 전공A", "pdf": "2020_A.pdf"},
+    "2020B": {"title": "2020학년도 전공B", "pdf": "2020jung14_3.pdf", "points": {4: 4}},   # 배점 글자가 추출되지 않음
+    "2019A": {"title": "2019학년도 전공A", "pdf": "2019미술A.pdf"},
+    "2019B": {"title": "2019학년도 전공B", "pdf": "2019jung14_3.pdf"},
+    "2018A": {"title": "2018학년도 전공A", "pdf": "2018jung14_2.pdf"},
+    "2018B": {"title": "2018학년도 전공B", "pdf": "2018_B.pdf"},
+    "2017A": {"title": "2017학년도 전공A", "pdf": "2017_중등1차_미술_전공A.pdf"},
+    "2017B": {"title": "2017학년도 전공B", "pdf": "2017_중등1차_미술_전공B.pdf"},
+    "2016A": {"title": "2016학년도 전공A", "pdf": "2016중등1차-미술-전공A.pdf"},
+    "2016B": {"title": "2016학년도 전공B", "pdf": "2016중등1차-미술-전공B.pdf"},
     "2025B": {
         "title": "2025학년도 전공B",
         "pdf": "2025 미술B.pdf",
@@ -129,13 +149,15 @@ def main(ids):
         doc = pymupdf.open(os.path.join(PDF_DIR, spec["pdf"]))
         os.makedirs(os.path.join(OUT, eid), exist_ok=True)
         qs = []
-        for n, segs in spec["questions"]:
+        questions = spec.get("questions") or sorted(auto_segments(doc).items())
+        for n, segs in questions:
             img = render(doc, segs)
             rel = f"exam/{eid}/q{n:02d}.jpg"
             img.save(os.path.join(ROOT, rel), "JPEG", quality=88, optimize=True)
             pg, col, y0, _ = segs[0]
             text = first_line(doc[pg - 1], col, y0)[:80] if spec.get("text", True) else ""
-            qs.append({"n": n, "points": points_of(doc[pg - 1], segs), "text": text, "img": rel})
+            pts = spec.get("points", {}).get(n) or points_of(doc[pg - 1], segs)
+            qs.append({"n": n, "points": pts, "text": text, "img": rel})
             print(f"{eid} q{n:02d}: {img.width}x{img.height}  [{qs[-1]['points']}점] {qs[-1]['text'][:40]}")
         entry = {"id": eid, "title": spec["title"], "count": len(qs), "questions": qs}
         index = [e for e in index if e["id"] != eid] + [entry]
