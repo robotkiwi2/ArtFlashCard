@@ -11,7 +11,7 @@
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
-<link rel="stylesheet" href="style.css?v=4375ef7c">
+<link rel="stylesheet" href="style.css?v=301fe7c1">
 </head>
 <body>
 <header>
@@ -115,12 +115,13 @@
       <button id="btn-wrong" class="wrong big">❌ 틀림</button>
     </div>
     <div id="report-box" class="report-box hidden">
-      <button id="btn-report" type="button" class="ghost mini">이상해요</button>
+      <button id="btn-report" type="button" class="ghost big">이상해요</button>
       <div id="report-form" class="report-form hidden">
-        <textarea id="report-note" rows="2" placeholder="무엇이 이상한지 적어 주세요 (선택)"></textarea>
+        <div id="report-reasons" class="chip-group report-reasons"></div>
+        <textarea id="report-note" rows="2" placeholder="그 밖의 내용이 있으면 적어 주세요 (선택)"></textarea>
         <div class="report-actions">
-          <button id="btn-report-send" type="button" class="primary mini">보내기</button>
-          <button id="btn-report-cancel" type="button" class="ghost mini">취소</button>
+          <button id="btn-report-send" type="button" class="primary">보내기</button>
+          <button id="btn-report-cancel" type="button" class="ghost">취소</button>
         </div>
       </div>
     </div>
@@ -185,6 +186,6 @@
 </section>
 
 <script type="module" src="firebase.js?v=93fafd16"></script>
-<script type="module" src="app.js?v=fae4fa4e"></script>
+<script type="module" src="app.js?v=a5294bc7"></script>
 </body>
 </html>

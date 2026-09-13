@@ -46,7 +46,10 @@ def main(argv):
         if c: print(f"    축1: {c.get('축1','')[:120]}")
         for rid, r in sorted(items, key=lambda x: x[1].get("at", "")):
             mark = "" if r.get("status") == "open" else " (처리됨)"
-            print(f"  - {r.get('at','')[:16]} {r.get('email','')} [{r.get('mode','')}] {r.get('note','') or '(메모 없음)'}  id={rid}{mark}")
+            why = " / ".join(r.get("reasons") or [])
+            note = r.get("note", "")
+            body = " · ".join(x for x in [why, note] if x) or "(내용 없음)"
+            print(f"  - {r.get('at','')[:16]} {r.get('email','')} [{r.get('mode','')}] {body}  id={rid}{mark}")
     return 0
 
 if __name__ == "__main__":

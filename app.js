@@ -901,6 +901,26 @@ function reveal() {
 }
 
 // ===== 카드 신고 ("이상해요") =====
+const REPORT_REASONS = [
+  "설명이 틀렸거나 부정확함",
+  "답이 여러 개 가능 (모호함)",
+  "앞면에 답이 드러남",
+  "오타·표기 오류",
+  "이미지가 안 보이거나 잘못됨",
+  "너무 지엽적·시험과 무관",
+  "다른 카드와 중복",
+];
+function buildReportReasons() {
+  const box = document.getElementById("report-reasons");
+  box.innerHTML = REPORT_REASONS.map(r => `<span class="chip" data-reason="${esc(r)}">${esc(r)}</span>`).join("");
+  box.onclick = e => {
+    const chip = e.target.closest(".chip");
+    if (chip) chip.classList.toggle("on");
+  };
+}
+function selectedReasons() {
+  return [...document.querySelectorAll("#report-reasons .chip.on")].map(el => el.dataset.reason);
+}
 // 이 기기에서 이미 신고한 카드는 다시 보내지 않도록 기억해 둔다 (표시용이라 로컬로 충분)
 const REPORTED_KEY = "flashcard-reported-v1";
 function reportedSet() {
@@ -919,14 +939,17 @@ function updateReportUI() {
   btn.disabled = !!done;
   document.getElementById("report-form").classList.add("hidden");
   document.getElementById("report-note").value = "";
+  document.querySelectorAll("#report-reasons .chip.on").forEach(el => el.classList.remove("on"));
 }
 async function sendReport() {
   const c = session.queue[session.idx];
+  const reasons = selectedReasons();
+  const note = document.getElementById("report-note").value.trim().slice(0, 500);
+  if (!reasons.length && !note) { alert("이유를 하나 이상 고르거나 내용을 적어 주세요."); return; }
   const btn = document.getElementById("btn-report-send");
   btn.disabled = true;
   try {
-    await FB.addReport({ cardId: String(c.id), 표제어: c.표제어, mode: session.mode,
-                         note: document.getElementById("report-note").value.trim().slice(0, 500) });
+    await FB.addReport({ cardId: String(c.id), 표제어: c.표제어, mode: session.mode, reasons, note });
     markReported(c.id);
     updateReportUI();
   } catch (e) {
@@ -1310,6 +1333,7 @@ async function init() {
   document.getElementById("btn-wrongnote").onclick = startReviewSession;
   document.getElementById("btn-reveal").onclick = reveal;
   document.getElementById("btn-hint").onclick = useHint;
+  buildReportReasons();
   document.getElementById("btn-report").onclick = () => {
     document.getElementById("report-form").classList.remove("hidden");
     document.getElementById("report-note").focus();
