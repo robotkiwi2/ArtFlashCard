@@ -384,6 +384,21 @@ button:disabled:active { transform: none; }
 .legend b { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 .ov-note { font-size: 0.8rem; color: var(--muted-lt); margin-top: 10px; }
 
+/* 약점 지도 */
+.map-hint { margin-bottom: 10px; }
+.map-legend { justify-content: center; margin-bottom: 14px; }
+.area-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+             gap: 6px; }
+.area-cell { border: none; border-radius: 6px; padding: 6px 4px; color: #fff;
+             cursor: pointer; text-align: center; min-height: 56px;
+             display: flex; flex-direction: column; align-items: center; justify-content: center;
+             gap: 3px; transition: transform 0.08s; }
+.area-cell:hover { transform: scale(1.05); z-index: 1; }
+.area-cell:active { transform: scale(0.97); }
+.area-label { font-size: 0.72rem; font-weight: bold; line-height: 1.25;
+              text-shadow: 0 1px 2px rgba(0,0,0,0.35); }
+.area-count { font-size: 0.68rem; opacity: 0.9; }
+
 /* 카드 목록을 같은 창 안에 띄울 때 (팝업이 막힌 경우) */
 .listbox-box { width: min(960px, 96vw); height: 88vh; display: flex; flex-direction: column; padding: 0; }
 .listbox-box .peek-bar { padding: 10px 14px; justify-content: space-between; }

@@ -516,13 +516,14 @@ window.addEventListener("message", e => {
 });
 
 // ===== 화면 전환 =====
-const screens = ["setup", "quiz", "result", "stats"];
+const screens = ["setup", "quiz", "result", "stats", "map"];
 function show(name) {
   screens.forEach(s => document.getElementById("screen-" + s).classList.toggle("hidden", s !== name));
   // 학습 수행 중에는 상단 네비게이션을 감춘다 (중단해야 노출)
   document.querySelector("header nav").classList.toggle("hidden", name === "quiz");
-  document.getElementById("nav-setup").classList.toggle("active", name !== "stats");
+  document.getElementById("nav-setup").classList.toggle("active", name === "setup");
   document.getElementById("nav-stats").classList.toggle("active", name === "stats");
+  document.getElementById("nav-map").classList.toggle("active", name === "map");
 }
 
 // ===== 학습 세션 =====
@@ -983,6 +984,83 @@ function renderStats() {
     : `<tr><td>기록 없음 (같은 카드를 2회 이상 학습하면 표시됩니다)</td></tr>`;
 }
 
+// ===== 약점 지도 (과목x유형x시대 영역별 그리드) =====
+// 카드를 성격이 뚜렷한 100여 개 영역으로 나누고, 영역마다 학습량·정답률을 색으로 보여준다.
+// 칸을 누르면 그 영역만으로 바로 학습을 시작한다(설정 화면을 거치지 않음).
+const SUBJ_ABBR = { "한국미술사": "한국", "서양미술사": "서양", "동양미술사": "동양",
+                    "미술교육학": "교육", "일반교육학": "일반교육", "표현기법": "표현" };
+function areaKey(c) {
+  return c.시대 ? `${c.과목}·${c.유형}·${c.시대}` : `${c.과목}·${c.유형}`;
+}
+function buildAreas() {
+  const groups = new Map();
+  CARDS.forEach(c => {
+    const k = areaKey(c);
+    if (!groups.has(k)) groups.set(k, { key: k, 과목: c.과목, 유형: c.유형, 시대: c.시대 || "", cards: [] });
+    groups.get(k).cards.push(c);
+  });
+  return [...groups.values()];
+}
+function scoreArea(area) {
+  const stats = loadStats();
+  let seen = 0, sum = 0, tries = 0, correct = 0;
+  area.cards.forEach(c => {
+    const s = stats[c.id];
+    if (!s) return;
+    seen++; tries += s.tries; correct += s.correct;
+    const box = s.box || 0;
+    sum += s.wrong ? 0 : box >= 5 ? 1 : box >= 3 ? 0.7 : 0.4;
+  });
+  const total = area.cards.length;
+  return {
+    total, seen, tries, correct,
+    seenRatio: total ? seen / total : 0,
+    avg: seen ? sum / seen : 0,
+    pct: tries ? Math.round(correct / tries * 100) : null,
+  };
+}
+function areaColor(score) {
+  if (score.seenRatio < 0.1) return "#9aa0a8";        // 거의 안 봄 (중립 회색)
+  if (score.avg < 0.45) return "#c0392b";             // 취약 (빨강)
+  if (score.avg < 0.75) return "#d9932c";             // 익히는 중 (주황)
+  return "#1e8e4e";                                    // 잘함 (초록)
+}
+function renderMap() {
+  const areas = buildAreas().sort((a, b) =>
+    a.과목.localeCompare(b.과목, "ko") || a.유형.localeCompare(b.유형, "ko") ||
+    a.시대.localeCompare(b.시대, "ko"));
+  const el = document.getElementById("area-grid");
+  el.innerHTML = areas.map(area => {
+    const score = scoreArea(area);
+    const color = areaColor(score);
+    const opacity = (0.4 + 0.6 * score.seenRatio).toFixed(2);
+    const subj = SUBJ_ABBR[area.과목] || area.과목;
+    const label = area.시대 ? `${subj}·${area.유형}<br>${area.시대}` : `${subj}·${area.유형}`;
+    const title = `${area.과목} · ${area.유형}${area.시대 ? " · " + area.시대 : ""}\n` +
+      `${score.seen}/${score.total}장 학습` + (score.pct !== null ? ` · 정답률 ${score.pct}%` : "");
+    return `<button type="button" class="area-cell" data-key="${esc(area.key)}"
+              style="background:${color};opacity:${opacity}" title="${esc(title)}">
+              <span class="area-label">${label}</span>
+              <span class="area-count">${score.seen}/${score.total}</span>
+            </button>`;
+  }).join("");
+}
+function startAreaSession(key) {
+  const area = buildAreas().find(a => a.key === key);
+  if (!area || !area.cards.length) return;
+  session = {
+    queue: buildQueue(area.cards, sessionSize(area.cards.length)),
+    idx: 0, mode: getMode(), correct: 0, wrongCards: [], isReview: false, origin: "map",
+  };
+  show("quiz");
+  renderCard();
+}
+// 학습을 마치거나 중단했을 때, 지도에서 들어왔다면 지도로 돌려보낸다.
+function backFromSession() {
+  if (session && session.origin === "map") { renderMap(); show("map"); }
+  else show("setup");
+}
+
 // ===== 초기화 =====
 async function init() {
   applyFontScale(loadFontScale());   // 저장된 글자 크기를 먼저 반영
@@ -1028,12 +1106,17 @@ async function init() {
   document.getElementById("btn-wrong").onclick = () => judge(false);
   document.getElementById("btn-quit").onclick = () => {
     if (confirm("학습을 중단할까요? (지금까지 채점한 기록은 저장됩니다)")) {
-      updateWrongCount(); show("setup");
+      updateWrongCount(); backFromSession();
     }
   };
-  document.getElementById("btn-again").onclick = () => { show("setup"); updatePoolCount(); updateWrongCount(); };
+  document.getElementById("btn-again").onclick = () => { backFromSession(); updatePoolCount(); updateWrongCount(); };
   document.getElementById("nav-setup").onclick = () => { show("setup"); updatePoolCount(); updateWrongCount(); };
   document.getElementById("nav-stats").onclick = () => { renderStats(); show("stats"); };
+  document.getElementById("nav-map").onclick = () => { renderMap(); show("map"); };
+  document.getElementById("area-grid").addEventListener("click", e => {
+    const b = e.target.closest(".area-cell");
+    if (b) startAreaSession(b.dataset.key);
+  });
   document.getElementById("btn-reset").onclick = () => {
     if (confirm("모든 학습 기록을 삭제할까요? 되돌릴 수 없습니다.")) {
       localStorage.removeItem(LS_KEY);

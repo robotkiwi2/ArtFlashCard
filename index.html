@@ -11,13 +11,14 @@
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
-<link rel="stylesheet" href="style.css?v=52bfb028">
+<link rel="stylesheet" href="style.css?v=f4f51efb">
 </head>
 <body>
 <header>
   <h1>🎨 임용미술 플래시카드</h1>
   <nav>
     <button id="nav-setup" class="active">학습 설정</button>
+    <button id="nav-map">약점 지도</button>
     <button id="nav-stats">성적 관리</button>
   </nav>
   <div id="theme-toggle" class="chip-group"></div>
@@ -112,6 +113,24 @@
   </div>
 </section>
 
+<!-- ===== 약점 지도 화면 ===== -->
+<section id="screen-map" class="hidden">
+  <div class="panel">
+    <h2>약점 지도</h2>
+    <p class="hint-center map-hint">
+      전체 범위를 <b>과목·유형·시대</b> 기준 약 130개 영역으로 나눴습니다. 칸을 누르면 그 영역만 바로 학습합니다.
+    </p>
+    <div class="legend map-legend">
+      <span><b style="background:#9aa0a8"></b>거의 안 봄</span>
+      <span><b style="background:#c0392b"></b>취약</span>
+      <span><b style="background:#d9932c"></b>익히는 중</span>
+      <span><b style="background:#1e8e4e"></b>잘함</span>
+      <span class="hint">(진하기는 학습량)</span>
+    </div>
+    <div id="area-grid" class="area-grid"></div>
+  </div>
+</section>
+
 <!-- ===== 성적 관리 화면 ===== -->
 <section id="screen-stats" class="hidden">
   <div class="panel">
@@ -141,6 +160,6 @@
   </div>
 </section>
 
-<script src="app.js?v=d2fb91f5"></script>
+<script src="app.js?v=64296f38"></script>
 </body>
 </html>
