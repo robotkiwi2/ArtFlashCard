@@ -989,17 +989,74 @@ function renderStats() {
 // 칸을 누르면 그 영역만으로 바로 학습을 시작한다(설정 화면을 거치지 않음).
 const SUBJ_ABBR = { "한국미술사": "한국", "서양미술사": "서양", "동양미술사": "동양",
                     "미술교육학": "교육", "일반교육학": "일반교육", "표현기법": "표현" };
-function areaKey(c) {
-  return c.시대 ? `${c.과목}·${c.유형}·${c.시대}` : `${c.과목}·${c.유형}`;
-}
+// 목표: 영역 하나당 카드 수를 비슷하게(AREA_TARGET 안팎) 맞춘다.
+// 과목x유형x시대로 먼저 나눈 뒤, 시대별 조각이 너무 작으면(< AREA_MERGE_MIN) 시대순으로
+// 이웃과 합치고, 너무 크면(> AREA_SPLIT_MAX) 표제어 가나다순으로 잘라 여러 조각으로 쪼갠다.
+const AREA_TARGET = 16, AREA_MERGE_MIN = 8, AREA_SPLIT_MAX = 28;
+const CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳".split("");
+function partLabel(i) { return CIRCLED[i] || `(${i + 1})`; }
+
 function buildAreas() {
-  const groups = new Map();
+  // 1) 과목x유형x시대로 1차 분류
+  const bySubjType = new Map();
   CARDS.forEach(c => {
-    const k = areaKey(c);
-    if (!groups.has(k)) groups.set(k, { key: k, 과목: c.과목, 유형: c.유형, 시대: c.시대 || "", cards: [] });
-    groups.get(k).cards.push(c);
+    const stKey = `${c.과목}·${c.유형}`;
+    if (!bySubjType.has(stKey)) bySubjType.set(stKey, new Map());
+    const eraMap = bySubjType.get(stKey);
+    const era = c.시대 || "";
+    if (!eraMap.has(era)) eraMap.set(era, []);
+    eraMap.get(era).push(c);
   });
-  return [...groups.values()];
+
+  const areas = [];
+  bySubjType.forEach((eraMap, stKey) => {
+    const [subj, typ] = stKey.split("·");
+    const eraGroups = [...eraMap.entries()].sort((a, b) => a[0].localeCompare(b[0], "ko"));
+
+    // 2) 작은 시대 조각을 이웃과 합친다 (시대순으로 누적)
+    const merged = [];
+    let buf = null;
+    eraGroups.forEach(([era, cards]) => {
+      if (!buf) buf = { eras: era ? [era] : [], cards: [...cards] };
+      else if (buf.cards.length < AREA_MERGE_MIN) {
+        buf.cards.push(...cards);
+        if (era) buf.eras.push(era);
+      } else {
+        merged.push(buf);
+        buf = { eras: era ? [era] : [], cards: [...cards] };
+      }
+    });
+    if (buf) merged.push(buf);
+    if (merged.length >= 2 && merged[merged.length - 1].cards.length < AREA_MERGE_MIN) {
+      const last = merged.pop();
+      merged[merged.length - 1].cards.push(...last.cards);
+      merged[merged.length - 1].eras.push(...last.eras);
+    }
+
+    // 3) 너무 큰 덩어리는 표제어 가나다순으로 목표 크기에 맞춰 쪼갠다
+    merged.forEach(g => {
+      const eraLabel = g.eras.length === 0 ? "" :
+        g.eras.length <= 2 ? g.eras.join("·") : `${g.eras[0]}~${g.eras[g.eras.length - 1]}`;
+      const n = g.cards.length;
+      if (n <= AREA_SPLIT_MAX) {
+        areas.push({ key: `${stKey}·${eraLabel}`, 과목: subj, 유형: typ, eraLabel, cards: g.cards });
+        return;
+      }
+      const sorted = [...g.cards].sort((a, b) => a.표제어.localeCompare(b.표제어, "ko"));
+      const parts = Math.max(1, Math.round(n / AREA_TARGET));
+      const size = Math.ceil(n / parts);
+      for (let i = 0; i < parts; i++) {
+        const chunk = sorted.slice(i * size, (i + 1) * size);
+        if (!chunk.length) continue;
+        areas.push({
+          key: `${stKey}·${eraLabel}·part${i}`, 과목: subj, 유형: typ, eraLabel,
+          cards: chunk, part: partLabel(i),
+          range: `${chunk[0].표제어}~${chunk[chunk.length - 1].표제어}`,
+        });
+      }
+    });
+  });
+  return areas;
 }
 function scoreArea(area) {
   const stats = loadStats();
@@ -1028,15 +1085,17 @@ function areaColor(score) {
 function renderMap() {
   const areas = buildAreas().sort((a, b) =>
     a.과목.localeCompare(b.과목, "ko") || a.유형.localeCompare(b.유형, "ko") ||
-    a.시대.localeCompare(b.시대, "ko"));
+    a.eraLabel.localeCompare(b.eraLabel, "ko") || (a.part || "").localeCompare(b.part || ""));
   const el = document.getElementById("area-grid");
   el.innerHTML = areas.map(area => {
     const score = scoreArea(area);
     const color = areaColor(score);
     const opacity = (0.4 + 0.6 * score.seenRatio).toFixed(2);
     const subj = SUBJ_ABBR[area.과목] || area.과목;
-    const label = area.시대 ? `${subj}·${area.유형}<br>${area.시대}` : `${subj}·${area.유형}`;
-    const title = `${area.과목} · ${area.유형}${area.시대 ? " · " + area.시대 : ""}\n` +
+    const sub = [area.eraLabel, area.part].filter(Boolean).join(" ");
+    const label = sub ? `${subj}·${area.유형}<br>${sub}` : `${subj}·${area.유형}`;
+    const title = `${area.과목} · ${area.유형}${area.eraLabel ? " · " + area.eraLabel : ""}` +
+      (area.part ? ` · ${area.part} (${area.range})` : "") + `\n` +
       `${score.seen}/${score.total}장 학습` + (score.pct !== null ? ` · 정답률 ${score.pct}%` : "");
     return `<button type="button" class="area-cell" data-key="${esc(area.key)}"
               style="background:${color};opacity:${opacity}" title="${esc(title)}">
