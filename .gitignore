@@ -19,3 +19,6 @@ _*.html
 # Firebase 서비스 계정 키 (절대 커밋 금지)
 firebase-admin-key.json
 *-firebase-adminsdk-*.json
+
+# 카드 원본 데이터 — 저장소에 올리지 않는다 (Firestore 로 배포, 로컬 사본은 OneDrive 가 보관)
+data/*.csv
