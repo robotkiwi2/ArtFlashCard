@@ -11,7 +11,7 @@
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
-<link rel="stylesheet" href="style.css?v=680bc194">
+<link rel="stylesheet" href="style.css?v=5c49bcf1">
 </head>
 <body>
 <header>
@@ -21,9 +21,70 @@
     <button id="nav-map">약점 지도</button>
     <button id="nav-stats">성적 관리</button>
   </nav>
-  <div id="theme-toggle" class="chip-group"></div>
+  <div class="header-right">
+    <div id="theme-toggle" class="chip-group"></div>
+    <button id="btn-help" type="button" class="mini help-btn" title="도움말">? 도움말</button>
+  </div>
   <div id="user-box" class="user-box hidden"><span id="user-email"></span><button id="btn-logout" class="mini">로그아웃</button></div>
 </header>
+
+<!-- ===== 도움말 ===== -->
+<div id="help-overlay" class="peek hidden">
+  <div class="peek-box help-box">
+    <div class="peek-bar"><b>도움말</b><span class="peek-path"></span>
+      <button type="button" class="ghost" id="btn-help-close">닫기</button></div>
+
+    <h3>이 앱은</h3>
+    <p>중등 미술 임용고시 대비 플래시카드입니다. 한국·동양·서양미술사, 미술교육학, 일반교육학, 표현기법의 핵심 개념을
+       카드로 인출 연습하고, 틀린 것을 자동으로 더 자주 만나게 해 줍니다.</p>
+
+    <h3>기본 흐름</h3>
+    <ol>
+      <li><b>학습 설정</b>에서 과목을 하나 고르고, 필요하면 유형·시대·태그·중요도를 좁힙니다.</li>
+      <li><b>모드</b>를 고릅니다.
+        <ul>
+          <li><b>설명 제시</b>(기본) — 설명을 보고 용어를 떠올립니다.</li>
+          <li><b>표제어 제시</b> — 용어를 보고 설명·의의를 떠올립니다.</li>
+          <li><b>이미지 제시</b> — 도판을 보고 작품·작가를 떠올립니다.</li>
+        </ul></li>
+      <li><b>학습 시작</b> → 답을 떠올린 뒤 <b>답 보기</b> → 스스로 <b>⭕ 맞음 / ❌ 틀림</b>으로 채점합니다.
+          솔직하게 채점할수록 출제가 정확해집니다.</li>
+    </ol>
+
+    <h3>학습 중 도구</h3>
+    <ul>
+      <li><b>힌트</b> — 글자 수 → 초성 순으로 열립니다. 힌트를 보고 맞히면 정답으로 기록되지만 복습 주기는 짧게 유지됩니다.</li>
+      <li><b>관련 항목</b> — 뒷면에서 같은 갈래의 형제 카드와 연결된 카드를 펼쳐 볼 수 있습니다.</li>
+      <li><b>이상해요</b> — 카드 내용이 틀렸거나 애매하면 이유를 골라 보내 주세요. 모아서 검토하고 고칩니다.</li>
+    </ul>
+
+    <h3>출제 방식</h3>
+    <p>안 본 카드가 먼저 나오고, 맞힌 카드는 연속 정답 횟수(0~5단계)가 오를수록 뜸하게 나옵니다. 틀리면 0단계로 돌아가
+       <b>오답 노트</b>에 들어가며, 다시 맞히면 빠집니다. 오답은 한 세션의 40%까지만 섞입니다.</p>
+
+    <h3>약점 지도 · 성적 관리</h3>
+    <ul>
+      <li><b>약점 지도</b> — 전 범위를 과목·유형·시대 기준 약 130칸으로 나눠 색으로 보여 줍니다.
+          회색=거의 안 봄, 빨강=취약, 주황=익히는 중, 초록=잘함. 칸을 누르면 그 영역만 바로 학습합니다.</li>
+      <li><b>성적 관리</b> — 전체 진도와 과목·유형·태그별 정답률, 취약 카드 TOP 10을 봅니다.</li>
+    </ul>
+
+    <h3>여러 기기에서 쓰기</h3>
+    <p>같은 계정으로 로그인하면 폰·태블릿 어디서나 같은 기록을 이어 갑니다. 채점할 때마다 저장되고,
+       앱으로 돌아올 때·학습을 시작할 때 다른 기기의 기록을 받아옵니다. 앱이나 카드가 갱신되면 자동으로 새로고침됩니다.</p>
+
+    <h3>앱 정보</h3>
+    <table class="help-info">
+      <tr><th>계정</th><td id="help-email">-</td></tr>
+      <tr><th>카드 수</th><td id="help-cards">-</td></tr>
+      <tr><th>앱 버전</th><td id="help-app-ver">-</td></tr>
+      <tr><th>카드 데이터 버전</th><td id="help-data-ver">-</td></tr>
+      <tr><th>기기에 기록된 카드</th><td id="help-seen">-</td></tr>
+    </table>
+    <p class="hint">기록은 Firebase(Firestore)에 계정별로 저장되며 본인만 읽고 쓸 수 있습니다.
+       카드 내용에 대한 문의·제안은 카드의 "이상해요" 버튼을 이용해 주세요.</p>
+  </div>
+</div>
 <div id="update-banner" class="update-banner hidden">
   <span id="update-text">새 버전이 있어요</span>
   <button id="btn-update-now" type="button" class="mini">지금 적용</button>
@@ -190,6 +251,6 @@
 </section>
 
 <script type="module" src="firebase.js?v=a7907f17"></script>
-<script type="module" src="app.js?v=12df0bf9"></script>
+<script type="module" src="app.js?v=442b6963"></script>
 </body>
 </html>

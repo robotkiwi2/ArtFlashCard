@@ -436,3 +436,15 @@ section.enter { animation: screen-in 0.22s ease-out; }
 .update-banner { display: flex; justify-content: center; align-items: center; gap: 12px; margin: -6px 0 12px;
   padding: 8px 12px; border-radius: 8px; background: var(--brand); color: var(--brand-fg); font-size: 0.9rem; }
 .update-banner button { background: var(--brand-fg); color: var(--brand); border: 0; }
+
+/* ===== 도움말 ===== */
+.header-right { display: flex; align-items: center; gap: 8px; }
+.help-btn { white-space: nowrap; }
+.help-box { line-height: 1.55; font-size: 0.95rem; }
+.help-box h3 { margin: 18px 0 6px; font-size: 1rem; color: var(--brand); }
+.help-box p, .help-box ul, .help-box ol { margin: 4px 0 8px; }
+.help-box ul, .help-box ol { padding-left: 20px; }
+.help-box li { margin: 3px 0; }
+.help-info { border-collapse: collapse; font-size: 0.9rem; }
+.help-info th { text-align: left; font-weight: normal; color: var(--muted); padding: 3px 14px 3px 0; white-space: nowrap; }
+.help-info td { padding: 3px 0; word-break: break-all; }

@@ -1290,6 +1290,20 @@ function applyUpdateIfIdle() {
   location.reload();
 }
 
+// ===== 도움말 =====
+function openHelp() {
+  document.getElementById("help-email").textContent = currentUser ? (currentUser.email || "-") : "로그인 전";
+  document.getElementById("help-cards").textContent = CARDS.length ? `${CARDS.length.toLocaleString()}장` : "-";
+  document.getElementById("help-app-ver").textContent = runningAppHash() || "-";
+  document.getElementById("help-data-ver").textContent = FB.cachedBundleVersion("cards") || "-";
+  const n = Object.keys(loadStats()).length;
+  document.getElementById("help-seen").textContent = CARDS.length ? `${n.toLocaleString()}장 (${Math.round(n / CARDS.length * 100)}%)` : "-";
+  const el = document.getElementById("help-overlay");
+  el.classList.remove("hidden");
+  el.querySelector(".peek-box").scrollTop = 0;
+}
+function closeHelp() { document.getElementById("help-overlay").classList.add("hidden"); }
+
 // ===== 로그인 =====
 function setLoginMsg(text, isError) {
   const el = document.getElementById("login-msg");
@@ -1347,7 +1361,10 @@ async function init() {
     const b = e.target.closest && e.target.closest(".link-card");
     if (b) { e.preventDefault(); openPeek(b.dataset.name); }
   });
-  document.addEventListener("keydown", e => { if (e.key === "Escape") closePeek(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") { closePeek(); closeHelp(); } });
+  document.getElementById("btn-help").onclick = openHelp;
+  document.getElementById("btn-help-close").onclick = closeHelp;
+  document.getElementById("help-overlay").addEventListener("click", e => { if (e.target.id === "help-overlay") closeHelp(); });
 
   // 버튼·칩 클릭음 (이벤트 위임 → 이후 추가되는 칩에도 자동 적용)
   document.addEventListener("click", e => {
