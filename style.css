@@ -532,3 +532,8 @@ nav button { display: inline-flex; align-items: center; gap: 6px; }
 .exam-answer .ans-note { font-size: 0.78rem; color: var(--muted-lt); margin: 0 0 8px; }
 .exam-answer p { margin: 4px 0; }
 .exam-answer .ans-none { color: var(--muted); }
+
+.ans-link { border: 0; background: none; padding: 0; font: inherit; color: var(--brand); text-decoration: underline dotted; cursor: pointer; }
+.ans-related { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--panel-border); }
+.ans-related .hint { margin-right: 4px; }
+.ans-related .chip { font: inherit; font-size: 0.85rem; }

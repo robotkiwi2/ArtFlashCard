@@ -4,7 +4,7 @@
 // - 나머지 같은 출처 GET(기출 이미지 등)은 캐시 우선 + 뒤에서 갱신.
 // - Firebase 서버(firestore/identitytoolkit 등)로 가는 요청은 건드리지 않는다.
 // VERSION 은 tools/stamp.py 가 커밋마다 바꿔 넣는다 → 배포마다 새 워커가 설치되고 옛 캐시를 지운다.
-const VERSION = "v2.0.73";
+const VERSION = "v2.0.74";
 const CACHE = "artflash-" + VERSION;
 const SDK = [
   "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js",

@@ -1479,8 +1479,25 @@ async function toggleAnswer() {
   const data = await loadAnswers(exam.entry.id);
   const q = exam.entry.questions[exam.idx];
   const lines = data && data.answers && data.answers[String(q.n)];
+  // 이 문항을 출처로 가진 카드들 — 답안 문장 속 표제어는 눌러서 열리게, 아래에는 칩으로 모두 나열
+  const tag = `${exam.entry.id}${q.n}`;
+  const related = CARDS.filter(c => (c.출처 || "").split(";").some(t => t.trim() === tag))
+                       .sort((a, b) => b.표제어.length - a.표제어.length);   // 긴 표제어부터 치환해 부분 겹침을 막는다
+  const linkify = text => {
+    let html = esc(text);
+    related.forEach(c => {
+      const name = esc(c.표제어);
+      if (!name || html.indexOf(name) < 0) return;
+      html = html.split(name).join(`‹‹${name}››`);   // 임시 표시 후 한 번에 버튼으로
+    });
+    return html.replace(/‹‹(.+?)››/g, (_, n) => `<button type="button" class="link-card ans-link" data-name="${n}">${n}</button>`);
+  };
+  const chips = related.length
+    ? `<div class="ans-related"><span class="hint">관련 카드</span>${related.map(c =>
+        `<button type="button" class="link-card chip" data-name="${esc(c.표제어)}">${esc(c.표제어)}</button>`).join("")}</div>`
+    : "";
   box.innerHTML = `<p class="ans-note">${esc(data && data.note || "참고 답안")}</p>` +
-    (lines ? lines.map(l => `<p>${esc(l)}</p>`).join("") : `<p class="ans-none">이 문항의 참고 답안은 아직 없습니다.</p>`);
+    (lines ? lines.map(l => `<p>${linkify(l)}</p>`).join("") : `<p class="ans-none">이 문항의 참고 답안은 아직 없습니다.</p>`) + chips;
   box.classList.remove("hidden");
   document.getElementById("btn-exam-answer").textContent = "답 닫기";
   box.scrollIntoView({ behavior: "smooth", block: "nearest" });
