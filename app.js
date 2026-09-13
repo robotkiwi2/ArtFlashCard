@@ -1264,6 +1264,13 @@ function backFromSession() {
 // 학습 중이면 끊지 않고 띠만 띄우고, 세션이 끝나 설정 화면으로 돌아올 때 적용한다.
 let updatePending = null, lastUpdateCheck = 0;
 const UPDATE_MIN_GAP = 60 * 1000;
+function appVersion() {
+  const m = document.querySelector('meta[name="app-version"]');
+  return m ? m.content : "";
+}
+function dataVersion() {
+  return FB.cachedBundleLabel("cards") || (FB.cachedBundleVersion("cards") ? "(구버전 라벨 없음)" : "-");
+}
 function runningAppHash() {
   const m = /app\.js\?v=([0-9a-f]+)/.exec(document.querySelector('script[src*="app.js"]').src);
   return m ? m[1] : "";
@@ -1314,8 +1321,8 @@ function renderMe() {
     [`${mastered.toLocaleString()}장`, `5단계 도달 (${pct(mastered)}%)`],
     [`${wrong.toLocaleString()}장`, `오답 노트`],
   ].map(([v, l]) => `<div class="me-stat"><b>${v}</b><span>${l}</span></div>`).join("");
-  document.getElementById("me-app-ver").textContent = runningAppHash() || "-";
-  document.getElementById("me-data-ver").textContent = FB.cachedBundleVersion("cards") || "-";
+  document.getElementById("me-app-ver").textContent = appVersion() || "-";
+  document.getElementById("me-data-ver").textContent = dataVersion();
   document.getElementById("me-sync").textContent = lastSyncAt ? new Date(lastSyncAt).toLocaleString("ko-KR") : "-";
 }
 
@@ -1326,8 +1333,8 @@ function closeSettings() { document.getElementById("settings-overlay").classList
 // ===== 도움말 =====
 function openHelp() {
   document.getElementById("help-cards").textContent = CARDS.length ? `${CARDS.length.toLocaleString()}장` : "-";
-  document.getElementById("help-app-ver").textContent = runningAppHash() || "-";
-  document.getElementById("help-data-ver").textContent = FB.cachedBundleVersion("cards") || "-";
+  document.getElementById("help-app-ver").textContent = appVersion() || "-";
+  document.getElementById("help-data-ver").textContent = dataVersion();
   const n = Object.keys(loadStats()).length;
   document.getElementById("help-seen").textContent = CARDS.length ? `${n.toLocaleString()}장 (${Math.round(n / CARDS.length * 100)}%)` : "-";
   closeSettings();
@@ -1389,6 +1396,7 @@ async function init() {
   buildThemeChips();
   show("login");
   setLoginMsg("로그인 상태 확인 중…");
+  document.getElementById("login-ver").textContent = appVersion();
 
   document.addEventListener("click", e => {
     const b = e.target.closest && e.target.closest(".link-card");

@@ -42,16 +42,19 @@ const BUNDLE_CACHE = "flashcard-bundle-v1:";
 async function loadBundle(name) {
   const metaSnap = await getDoc(doc(db, "bundle", name));
   if (!metaSnap.exists()) throw new Error(`bundle/${name} 이 없습니다. tools/upload_firestore.py 를 먼저 실행하세요.`);
-  const { v, n } = metaSnap.data();
+  const { v, n, label } = metaSnap.data();
   let cached = null;
   try { cached = JSON.parse(localStorage.getItem(BUNDLE_CACHE + name)); } catch {}
-  if (cached && cached.v === v && typeof cached.text === "string") return cached.text;
+  if (cached && cached.v === v && typeof cached.text === "string") {
+    if (label && cached.label !== label) { cached.label = label; try { localStorage.setItem(BUNDLE_CACHE + name, JSON.stringify(cached)); } catch {} }
+    return cached.text;
+  }
 
   const parts = await Promise.all(
     Array.from({ length: n }, (_, i) => getDoc(doc(db, "bundle", `${name}_${i}`)))
   );
   const text = parts.map(p => (p.exists() ? p.data().t : "")).join("");
-  try { localStorage.setItem(BUNDLE_CACHE + name, JSON.stringify({ v, text })); } catch {}
+  try { localStorage.setItem(BUNDLE_CACHE + name, JSON.stringify({ v, label: label || "", text })); } catch {}
   return text;
 }
 
@@ -62,6 +65,9 @@ async function bundleVersion(name) {
 }
 function cachedBundleVersion(name) {
   try { return (JSON.parse(localStorage.getItem(BUNDLE_CACHE + name)) || {}).v || null; } catch { return null; }
+}
+function cachedBundleLabel(name) {
+  try { return (JSON.parse(localStorage.getItem(BUNDLE_CACHE + name)) || {}).label || null; } catch { return null; }
 }
 
 // ----- 학습 기록 -----
@@ -106,6 +112,7 @@ window.FB = {
   loadBundle,
   bundleVersion,
   cachedBundleVersion,
+  cachedBundleLabel,
   loadProgress,
   writeProgress,
   saveProgressEntry,

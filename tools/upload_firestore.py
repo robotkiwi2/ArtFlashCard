@@ -13,7 +13,7 @@
 
     pip install firebase-admin
 """
-import hashlib, io, os, sys
+import datetime, hashlib, io, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KEY = os.environ.get("FIREBASE_KEY") or os.path.join(os.path.dirname(ROOT), "firebase-admin-key.json")
@@ -45,6 +45,8 @@ def main():
         v = hashlib.sha1(text.encode("utf-8")).hexdigest()[:12]
         meta = db.collection("bundle").document(name).get()
         if meta.exists and meta.to_dict().get("v") == v:
+            if not meta.to_dict().get("label"):   # 라벨 도입 이전 문서에는 라벨만 채운다
+                meta.reference.update({"label": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")})
             print(f"{name}: 변경 없음 ({v})"); continue
         parts = chunks(text)
         batch = db.batch()
@@ -54,7 +56,8 @@ def main():
         old_n = meta.to_dict().get("n", 0) if meta.exists else 0
         for i in range(len(parts), old_n):
             batch.delete(db.collection("bundle").document(f"{name}_{i}"))
-        batch.set(db.collection("bundle").document(name), {"v": v, "n": len(parts)})
+        label = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        batch.set(db.collection("bundle").document(name), {"v": v, "n": len(parts), "label": label})
         batch.commit()
         print(f"{name}: 업로드 {len(parts)}조각, {len(raw):,} bytes ({v})")
     return 0

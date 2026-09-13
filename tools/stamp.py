@@ -11,7 +11,7 @@ GitHub Pages 는 모든 파일에 max-age=600 을 붙여 이 장치가 없으면
 커밋 직전에 .git/hooks/pre-commit 이 이 스크립트를 부른다.
 손으로 돌려도 된다:  python tools/stamp.py
 """
-import hashlib, io, os, re, sys
+import hashlib, io, os, re, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TARGETS = ["app.js", "style.css", "firebase.js"]
@@ -23,10 +23,20 @@ def digest(path):
         data = f.read().replace(b"\r\n", b"\n")
     return hashlib.sha1(data).hexdigest()[:8]
 
+def app_version():
+    # VERSION 파일의 major.minor + 커밋 수(이번 커밋 포함) = v2.0.62 처럼 사람이 읽는 버전
+    base = io.open(os.path.join(ROOT, "VERSION"), encoding="utf-8").read().strip() or "0.0"
+    try:
+        n = int(subprocess.check_output(["git", "rev-list", "--count", "HEAD"], cwd=ROOT).decode().strip()) + 1
+    except Exception:
+        n = 0
+    return f"v{base}.{n}"
+
 def main():
     idx = os.path.join(ROOT, "index.html")
     html = io.open(idx, encoding="utf-8").read()
     before = html
+    html = re.sub(r'(<meta name="app-version" content=")[^"]*(")', r'\g<1>%s\g<2>' % app_version(), html)
     for name in TARGETS:
         h = digest(os.path.join(ROOT, name))
         # href="style.css" / href="style.css?v=xxxx" / src="app.js..." 를 모두 잡는다
