@@ -490,7 +490,7 @@ function cardListHtml(pool) {
     <section>
       <h2>${esc(subj)} <small>${cards.length}장</small></h2>
       <ol>${cards.sort(cmp).map(c =>
-        `<li>${esc(c.표제어)}<span class="t">${esc(c.유형)}</span></li>`).join("")}</ol>
+        `<li><a href="#" data-name="${esc(c.표제어)}">${esc(c.표제어)}</a><span class="t">${esc(c.유형)}</span></li>`).join("")}</ol>
     </section>`).join("");
 
   const dark = isDarkNow();
@@ -512,6 +512,8 @@ function cardListHtml(pool) {
   h2 small { color: ${smallFg}; font-weight: normal; margin-left: 6px; }
   ol { margin: 0; padding-left: 26px; columns: 3; column-gap: 28px; }
   li { font-size: 0.92rem; line-height: 1.55; break-inside: avoid; }
+  li a { color: inherit; text-decoration: none; border-bottom: 1px dotted ${tFg}; }
+  li a:hover { color: ${closeFg}; border-bottom-color: ${closeFg}; }
   .t { font-size: 0.7rem; color: ${tFg}; margin-left: 5px; }
   @media (max-width: 860px) { ol { columns: 2; } }
   @media (max-width: 520px) { ol { columns: 1; } }
@@ -534,6 +536,14 @@ function cardListHtml(pool) {
     window.close();
     setTimeout(() => { if (!window.closed) history.back(); }, 250);
   };
+  // 항목을 누르면 앱 쪽에서 그 카드를 (학습 화면의 뒷면처럼) 미리보기로 연다
+  document.addEventListener("click", e => {
+    const a = e.target.closest("a[data-name]");
+    if (!a) return;
+    e.preventDefault();
+    const target = window.parent !== window ? window.parent : window.opener;
+    if (target) target.postMessage({ type: "open-card", name: a.dataset.name }, "*");
+  });
 </script>
 <h1>선택 범위 카드 ${pool.length}장</h1>
 <div class="scope">${esc(scope)}</div>
@@ -1544,6 +1554,11 @@ async function init() {
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape") { closePeek(); closeHelp(); closeSettings();
     const ep = document.getElementById("exam-peek"); if (ep) ep.classList.add("hidden"); } });
+  window.addEventListener("message", e => {
+    if (e.data && e.data.type === "open-card" && typeof e.data.name === "string") {
+      openPeek(e.data.name);
+    }
+  });
   document.getElementById("btn-settings").onclick = openSettings;
   document.getElementById("btn-settings-close").onclick = closeSettings;
   document.getElementById("settings-overlay").addEventListener("click", e => { if (e.target.id === "settings-overlay") closeSettings(); });

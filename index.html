@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>임용미술 플래시카드</title>
-<meta name="app-version" content="v2.0.67">
+<meta name="app-version" content="v2.0.68">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1a1d23" media="(prefers-color-scheme: dark)">
@@ -21,7 +21,7 @@
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
-<link rel="stylesheet" href="style.css?v=9f8d43c5">
+<link rel="stylesheet" href="style.css?v=020ccb16">
 </head>
 <body>
 <header>
@@ -111,8 +111,7 @@
       <tr><th>카드 데이터 버전</th><td id="help-data-ver">-</td></tr>
       <tr><th>기기에 기록된 카드</th><td id="help-seen">-</td></tr>
     </table>
-    <p class="hint">기록은 Firebase(Firestore)에 계정별로 저장되며 본인만 읽고 쓸 수 있습니다.
-       카드 내용에 대한 문의·제안은 카드의 "이상해요" 버튼을 이용해 주세요.</p>
+    <p class="hint">문의: robotkiwi@gmail.com</p>
   </div>
 </div>
 <div id="update-banner" class="update-banner hidden">
@@ -328,6 +327,6 @@
 </section>
 
 <script type="module" src="firebase.js?v=40598c4d"></script>
-<script type="module" src="app.js?v=77627507"></script>
+<script type="module" src="app.js?v=44d2fae5"></script>
 </body>
 </html>

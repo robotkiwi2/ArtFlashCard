@@ -514,3 +514,5 @@ nav button { display: inline-flex; align-items: center; gap: 6px; }
   .exam-peek-box .zoom-bar .hint { display: none; }
   .exam-q-panel { padding: 2px; }
 }
+
+#peek { z-index: 60; }
