@@ -572,7 +572,14 @@ window.addEventListener("message", e => {
 // ===== 화면 전환 =====
 const screens = ["login", "setup", "quiz", "result", "stats", "map"];
 function show(name) {
-  screens.forEach(s => document.getElementById("screen-" + s).classList.toggle("hidden", s !== name));
+  screens.forEach(s => {
+    const el = document.getElementById("screen-" + s);
+    const on = s === name;
+    if (on && el.classList.contains("hidden")) {   // 새로 나타나는 화면만 애니메이션
+      el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter");
+    }
+    el.classList.toggle("hidden", !on);
+  });
   // 학습 수행 중·로그인 전에는 상단 네비게이션을 감춘다
   document.querySelector("header nav").classList.toggle("hidden", name === "quiz" || name === "login");
   document.getElementById("user-box").classList.toggle("hidden", name === "login");
@@ -1236,11 +1243,53 @@ async function startAreaSession(key) {
 }
 // 학습을 마치거나 중단했을 때, 지도에서 들어왔다면 지도로 돌려보낸다.
 function backFromSession() {
+  if (updatePending) { location.reload(); return; }
   if (session && session.origin === "map") { renderMap(); show("map"); }
   else show("setup");
 }
 
 // ===== 초기화 =====
+// ===== 자동 갱신 =====
+// 열려 있는 탭은 스스로 새 코드·새 카드를 받지 않는다. 앱이 화면에 다시 나타날 때
+// index.html 의 스크립트 해시와 카드 번들 해시를 확인해, 바뀌었으면 새로고침한다.
+// 학습 중이면 끊지 않고 띠만 띄우고, 세션이 끝나 설정 화면으로 돌아올 때 적용한다.
+let updatePending = null, lastUpdateCheck = 0;
+const UPDATE_MIN_GAP = 60 * 1000;
+function runningAppHash() {
+  const m = /app\.js\?v=([0-9a-f]+)/.exec(document.querySelector('script[src*="app.js"]').src);
+  return m ? m[1] : "";
+}
+async function latestAppHash() {
+  // 캐시(브라우저·CDN 10분)를 피하려 매번 다른 주소로 받는다
+  const res = await fetch(`index.html?_=${Date.now()}`, { cache: "no-store" });
+  if (!res.ok) return null;
+  const m = /app\.js\?v=([0-9a-f]+)/.exec(await res.text());
+  return m ? m[1] : null;
+}
+async function checkForUpdate() {
+  if (Date.now() - lastUpdateCheck < UPDATE_MIN_GAP) return;
+  lastUpdateCheck = Date.now();
+  const found = [];
+  try {
+    const [appHash, cardsV] = await Promise.all([latestAppHash(), currentUser ? FB.bundleVersion("cards") : null]);
+    if (appHash && appHash !== runningAppHash()) found.push("앱");
+    if (cardsV && cardsV !== FB.cachedBundleVersion("cards")) found.push("카드");
+  } catch (e) { console.warn("[update] 확인 실패", e); return; }
+  if (!found.length) return;
+  updatePending = found.join("·");
+  applyUpdateIfIdle();
+}
+function inQuiz() { return !document.getElementById("screen-quiz").classList.contains("hidden"); }
+function applyUpdateIfIdle() {
+  if (!updatePending) return;
+  if (inQuiz()) {
+    document.getElementById("update-text").textContent = `새 ${updatePending} 버전이 있어요 — 세션이 끝나면 적용됩니다`;
+    document.getElementById("update-banner").classList.remove("hidden");
+    return;
+  }
+  location.reload();
+}
+
 // ===== 로그인 =====
 function setLoginMsg(text, isError) {
   const el = document.getElementById("login-msg");
@@ -1276,6 +1325,7 @@ async function bootUserData() {
     setLoginMsg("데이터를 불러오지 못했습니다: " + (e && e.message || e), true);
     return;
   }
+  lastUpdateCheck = Date.now();   // 방금 받았으니 잠시 확인하지 않는다
   buildSubjectChips();
   rebuildDependentChips();     // 유형·시대·태그·중요도 전체 선택 상태로 시작
   updatePoolCount();
@@ -1363,8 +1413,10 @@ async function init() {
     }
   };
 
+  document.getElementById("btn-update-now").onclick = () => location.reload();
   document.addEventListener("visibilitychange", async () => {
     if (document.visibilityState !== "visible" || !currentUser) return;
+    checkForUpdate();
     const before = JSON.stringify(loadStats());
     await resyncIfStale();
     if (JSON.stringify(loadStats()) === before) return;

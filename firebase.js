@@ -55,6 +55,15 @@ async function loadBundle(name) {
   return text;
 }
 
+// 번들 메타(해시)만 읽는다 — 새 카드 데이터가 올라왔는지 확인하는 용도 (읽기 1회)
+async function bundleVersion(name) {
+  const snap = await getDoc(doc(db, "bundle", name));
+  return snap.exists() ? snap.data().v : null;
+}
+function cachedBundleVersion(name) {
+  try { return (JSON.parse(localStorage.getItem(BUNDLE_CACHE + name)) || {}).v || null; } catch { return null; }
+}
+
 // ----- 학습 기록 -----
 // progress/{uid} : { cards: { [cardId]: {tries, correct, box, wrong, last} }, updatedAt }
 function progressRef(uid) { return doc(db, "progress", uid); }
@@ -95,6 +104,8 @@ window.FB = {
   resetPassword: email => sendPasswordResetEmail(auth, email),
   authMessage,
   loadBundle,
+  bundleVersion,
+  cachedBundleVersion,
   loadProgress,
   writeProgress,
   saveProgressEntry,

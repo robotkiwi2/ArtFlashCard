@@ -11,7 +11,7 @@
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
-<link rel="stylesheet" href="style.css?v=301fe7c1">
+<link rel="stylesheet" href="style.css?v=680bc194">
 </head>
 <body>
 <header>
@@ -24,6 +24,10 @@
   <div id="theme-toggle" class="chip-group"></div>
   <div id="user-box" class="user-box hidden"><span id="user-email"></span><button id="btn-logout" class="mini">로그아웃</button></div>
 </header>
+<div id="update-banner" class="update-banner hidden">
+  <span id="update-text">새 버전이 있어요</span>
+  <button id="btn-update-now" type="button" class="mini">지금 적용</button>
+</div>
 
 <!-- ===== 로그인 화면 ===== -->
 <section id="screen-login">
@@ -185,7 +189,7 @@
   </div>
 </section>
 
-<script type="module" src="firebase.js?v=93fafd16"></script>
-<script type="module" src="app.js?v=a5294bc7"></script>
+<script type="module" src="firebase.js?v=a7907f17"></script>
+<script type="module" src="app.js?v=12df0bf9"></script>
 </body>
 </html>

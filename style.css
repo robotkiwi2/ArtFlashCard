@@ -423,3 +423,16 @@ button:disabled:active { transform: none; }
 #btn-report.done { color: var(--green); border-color: var(--green); cursor: default; opacity: 1; }
 .report-reasons { justify-content: center; }
 .report-reasons .chip { font-size: 0.95rem; padding: 8px 14px; }
+
+/* ===== 화면 전환 ===== */
+section.enter { animation: screen-in 0.22s ease-out; }
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { section.enter { animation: none; } }
+
+/* ===== 갱신 알림 띠 ===== */
+.update-banner { display: flex; justify-content: center; align-items: center; gap: 12px; margin: -6px 0 12px;
+  padding: 8px 12px; border-radius: 8px; background: var(--brand); color: var(--brand-fg); font-size: 0.9rem; }
+.update-banner button { background: var(--brand-fg); color: var(--brand); border: 0; }
