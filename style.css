@@ -202,6 +202,10 @@ body {
   font-family: "Malgun Gothic", "맑은 고딕", sans-serif;
   background: var(--bg); color: var(--fg);
   max-width: 760px; margin: 0 auto; padding: 16px;
+  /* 홈 화면 앱(전체 화면)에서 노치·홈 인디케이터 영역을 피한다 */
+  padding-top: calc(16px + env(safe-area-inset-top));
+  padding-left: calc(16px + env(safe-area-inset-left));
+  padding-right: calc(16px + env(safe-area-inset-right));
 }
 header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
 h1 { font-size: 1.25rem; }
@@ -464,7 +468,7 @@ nav button { display: inline-flex; align-items: center; gap: 6px; }
 .icon-btn svg.ico { width: 1.25em; height: 1.25em; vertical-align: middle; color: var(--muted); }
 #judge-buttons button { display: inline-flex; align-items: center; gap: 6px; }
 @media (max-width: 640px) {
-  body { padding-bottom: 76px; }   /* 하단 바에 가리지 않게 */
+  body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }   /* 하단 바에 가리지 않게 */
   #main-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
     display: flex; justify-content: space-around; gap: 0; flex-wrap: nowrap;
     background: var(--panel-bg); border-top: 1px solid var(--panel-border);
