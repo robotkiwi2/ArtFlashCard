@@ -61,6 +61,7 @@ GitHub Pages: Settings → Pages → Source를 `main` 브랜치 `/ (root)` 로 �
 - 카드 업로드: 서비스 계정 키(콘솔 → 프로젝트 설정 → 서비스 계정 → 새 비공개 키)를
   저장소 **밖**에 `firebase-admin-key.json` 으로 두고 `pip install firebase-admin` 후
   `python tools/upload_firestore.py`. 키는 절대 커밋하지 않는다
-- 데이터 구조: `bundle/cards`·`bundle/links` (CSV 텍스트 조각 + 해시), `progress/{uid}` (카드별 기록)
+- 데이터 구조: `bundle/cards`·`bundle/links` (CSV 텍스트 조각 + 해시), `progress/{uid}` (카드별 기록), `reports` (카드 신고)
+- 신고 검토: 카드 뒷면 "이상해요" 로 들어온 신고를 `python tools/reports.py` 로 보고, 반영한 뒤 `--done 카드id` 로 닫는다
 
 기획 문서는 [기획.md](기획.md) 참조.

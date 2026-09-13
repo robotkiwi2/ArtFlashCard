@@ -883,6 +883,7 @@ function renderCard() {
   back.classList.add("hidden");
   document.getElementById("btn-reveal").classList.remove("hidden");
   document.getElementById("judge-buttons").classList.add("hidden");
+  document.getElementById("report-box").classList.add("hidden");
   const hintBtn = document.getElementById("btn-hint");
   if (hintBtn) hintBtn.classList.toggle("hidden", !hintUsesTerm(session.mode));
   updateHintUI();
@@ -895,6 +896,42 @@ function reveal() {
   document.getElementById("btn-reveal").classList.add("hidden");
   document.getElementById("btn-hint").classList.add("hidden");
   document.getElementById("judge-buttons").classList.remove("hidden");
+  document.getElementById("report-box").classList.remove("hidden");
+  updateReportUI();
+}
+
+// ===== 카드 신고 ("이상해요") =====
+// 이 기기에서 이미 신고한 카드는 다시 보내지 않도록 기억해 둔다 (표시용이라 로컬로 충분)
+const REPORTED_KEY = "flashcard-reported-v1";
+function reportedSet() {
+  try { return new Set(JSON.parse(localStorage.getItem(REPORTED_KEY)) || []); } catch { return new Set(); }
+}
+function markReported(cardId) {
+  const s = reportedSet(); s.add(String(cardId));
+  try { localStorage.setItem(REPORTED_KEY, JSON.stringify([...s])); } catch {}
+}
+function updateReportUI() {
+  const c = session && session.queue[session.idx];
+  const btn = document.getElementById("btn-report");
+  const done = c && reportedSet().has(String(c.id));
+  btn.textContent = done ? "신고됨 ✓" : "이상해요";
+  btn.classList.toggle("done", !!done);
+  btn.disabled = !!done;
+  document.getElementById("report-form").classList.add("hidden");
+  document.getElementById("report-note").value = "";
+}
+async function sendReport() {
+  const c = session.queue[session.idx];
+  const btn = document.getElementById("btn-report-send");
+  btn.disabled = true;
+  try {
+    await FB.addReport({ cardId: String(c.id), 표제어: c.표제어, mode: session.mode,
+                         note: document.getElementById("report-note").value.trim().slice(0, 500) });
+    markReported(c.id);
+    updateReportUI();
+  } catch (e) {
+    alert("신고를 보내지 못했습니다: " + (e && e.message || e));
+  } finally { btn.disabled = false; }
 }
 
 function judge(isCorrect) {
@@ -1273,6 +1310,12 @@ async function init() {
   document.getElementById("btn-wrongnote").onclick = startReviewSession;
   document.getElementById("btn-reveal").onclick = reveal;
   document.getElementById("btn-hint").onclick = useHint;
+  document.getElementById("btn-report").onclick = () => {
+    document.getElementById("report-form").classList.remove("hidden");
+    document.getElementById("report-note").focus();
+  };
+  document.getElementById("btn-report-cancel").onclick = updateReportUI;
+  document.getElementById("btn-report-send").onclick = sendReport;
   document.getElementById("btn-correct").onclick = () => judge(true);
   document.getElementById("btn-wrong").onclick = () => judge(false);
   document.getElementById("btn-quit").onclick = () => {

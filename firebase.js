@@ -5,7 +5,7 @@ import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, updateDoc,
+  getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -78,7 +78,17 @@ async function saveProgressEntries(uid, entries) {
 }
 const saveProgressEntry = (uid, cardId, entry) => saveProgressEntries(uid, { [cardId]: entry });
 
+// ----- 카드 신고 -----
+// reports/{auto} : { cardId, 표제어, mode, note, uid, email, at, status:"open" }
+// 사용자는 만들기만 하고 읽지 않는다(규칙). 검토는 tools/reports.py 가 관리자 SDK 로 한다.
+async function addReport(data) {
+  const u = auth.currentUser;
+  if (!u) throw new Error("로그인이 필요합니다");
+  await addDoc(collection(db, "reports"), { ...data, uid: u.uid, email: u.email || "", at: new Date().toISOString(), status: "open" });
+}
+
 window.FB = {
+  addReport,
   onAuth: cb => onAuthStateChanged(auth, cb),
   login: (email, pw) => signInWithEmailAndPassword(auth, email, pw),
   logout: () => signOut(auth),
