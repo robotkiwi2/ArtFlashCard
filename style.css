@@ -545,3 +545,35 @@ nav button { display: inline-flex; align-items: center; gap: 6px; }
 .pw-form { display: flex; flex-direction: column; gap: 8px; max-width: 420px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--panel-border); }
 
 .login-field select { font-size: 1.05em; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--input-bg); color: var(--fg); }
+
+/* ===== 기출 텍스트판 (글로 옮긴 문항) — 카드 본문과 같은 글자 배율 ===== */
+.exam-item-text { border-left: 3px solid var(--brand); }
+.exam-q-text { margin: 0 0 12px; padding: 14px 16px; border-radius: 10px; border: 1px solid var(--panel-border);
+  background: var(--card-bg, var(--bg)); font-size: calc(var(--fs) * 1rem); line-height: 1.75; word-break: keep-all; }
+.exam-q-text p { margin: 6px 0; }
+.exam-q-text .stem { font-weight: 500; margin: 0 0 10px; }
+.exam-q-text .pts { color: var(--muted); font-weight: normal; margin-left: 4px; }
+.exam-q-text .fig-note { font-size: 0.85em; color: var(--muted); margin: 0 0 6px; }
+.exam-q-text u { text-decoration: underline; text-underline-offset: 3px; }
+.exam-q-text .box { border: 1px solid var(--panel-border); border-radius: 8px; padding: 10px 14px; margin: 10px 0; background: var(--chip-bg); }
+.exam-q-text .box h4 { margin: 8px 0 4px; font-size: 1em; }
+.exam-q-text .box h4:first-child { margin-top: 0; }
+.exam-q-text .box ul { margin: 0; padding-left: 20px; }
+.exam-q-text .box li { margin: 3px 0; }
+.exam-q-text .dialog p { margin: 4px 0; }
+.exam-q-text .method { border: 1px dashed var(--panel-border); border-radius: 8px; padding: 10px 14px; margin: 10px 0; }
+.exam-q-text .method h4 { margin: 0 0 6px; font-size: 0.95em; }
+.exam-q-text .method ul { margin: 0; padding-left: 20px; }
+.exam-q-text .flow { letter-spacing: 0.02em; }
+.exam-q-text table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 0.95em; background: var(--bg); }
+.exam-q-text th, .exam-q-text td { border: 1px solid var(--panel-border); padding: 6px 8px; text-align: left; vertical-align: top; }
+.exam-q-text th { background: var(--chip-bg); white-space: nowrap; font-weight: 600; }
+.exam-q-text figure { margin: 8px auto; text-align: center; max-width: 360px; }
+.exam-q-text figure img { display: block; width: 100%; max-height: 52vh; object-fit: contain; border-radius: 6px; background: #fff; border: 1px solid var(--panel-border); }
+.exam-q-text figure img.tall { max-height: 60vh; }
+.exam-q-text figcaption { font-size: 0.85em; color: var(--muted); margin-top: 4px; }
+.exam-q-text .figs { display: flex; gap: 12px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+.exam-q-text .figs figure { flex: 1 1 160px; max-width: 300px; }
+.exam-q-text .report figure { max-width: 100%; }
+.exam-q-text .qx-note { font-size: 0.8em; color: var(--muted-lt); margin-top: 12px; }
+@media (max-width: 640px) { .exam-q-text { padding: 12px 12px; } .exam-q-text .box, .exam-q-text .method { padding: 8px 10px; } }

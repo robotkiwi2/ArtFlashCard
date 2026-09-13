@@ -1481,17 +1481,30 @@ function applyUpdateIfIdle() {
 let EXAMS = null, exam = null;   // exam = { entry, idx }
 async function loadExams() {
   if (EXAMS) return EXAMS;
+  const getJson = async url => { const r = await fetch(`${url}?_=${Date.now()}`, { cache: "no-store" }); return r.ok ? r.json() : null; };
+  let list = [];
+  try { list = (await getJson(`exam/${MAJOR}/index.json`)) || []; } catch {}   // 오프라인 등. 서비스 워커 캐시가 있으면 fetch 가 그걸 돌려준다
+  // 텍스트판: exam/<전공>/text/index.json = [시험id], 각 exam/<전공>/text/<시험id>.json
+  //   { id:"2026A-text", tagId:"2026A", format:"text", title, note, questions:[{n, points, html}] }
+  //   이미지판 바로 뒤에 끼워 넣는다. 답안·관련 카드는 tagId(원 시험) 기준.
   try {
-    const res = await fetch(`exam/${MAJOR}/index.json?_=${Date.now()}`, { cache: "no-store" });
-    EXAMS = res.ok ? await res.json() : [];
-  } catch { EXAMS = []; }   // 오프라인 등. 서비스 워커 캐시가 있으면 fetch 가 그걸 돌려준다
+    const ids = (await getJson(`exam/${MAJOR}/text/index.json`)) || [];
+    const entries = await Promise.all(ids.map(id => getJson(`exam/${MAJOR}/text/${id}.json`).catch(() => null)));
+    entries.filter(Boolean).forEach(t => {
+      t.format = "text"; t.count = t.questions.length;
+      const at = list.findIndex(e => e.id === t.tagId);
+      list.splice(at >= 0 ? at + 1 : 0, 0, t);
+    });
+  } catch {}
+  EXAMS = list;
   return EXAMS;
 }
+const examTag = entry => entry.tagId || entry.id;   // 답안 파일·카드 출처 태그에 쓰는 시험 id
 async function renderExamList() {
   const list = await loadExams();
   const box = document.getElementById("exam-list");
   box.innerHTML = list.length
-    ? list.map(e => `<div class="exam-item" data-id="${esc(e.id)}"><b>${esc(e.title)}</b><span>${e.count}문항</span></div>`).join("")
+    ? list.map(e => `<div class="exam-item${e.format === "text" ? " exam-item-text" : ""}" data-id="${esc(e.id)}"><b>${esc(e.title)}</b><span>${e.count}문항${e.format === "text" ? " · 글" : ""}</span></div>`).join("")
     : `<p class="hint">등록된 기출문제가 없습니다.</p>`;
   document.getElementById("exam-list-view").classList.remove("hidden");
   document.getElementById("exam-q-view").classList.add("hidden");
@@ -1523,11 +1536,11 @@ function hideAnswer() {
 async function toggleAnswer() {
   const box = document.getElementById("exam-answer");
   if (!box.classList.contains("hidden")) { hideAnswer(); return; }
-  const data = await loadAnswers(exam.entry.id);
+  const data = await loadAnswers(examTag(exam.entry));
   const q = exam.entry.questions[exam.idx];
   const lines = data && data.answers && data.answers[String(q.n)];
   // 이 문항을 출처로 가진 카드들 — 답안 문장 속 표제어는 눌러서 열리게, 아래에는 칩으로 모두 나열
-  const tag = `${exam.entry.id}${q.n}`;
+  const tag = `${examTag(exam.entry)}${q.n}`;
   const related = CARDS.filter(c => (c.출처 || "").split(";").some(t => t.trim() === tag))
                        .sort((a, b) => b.표제어.length - a.표제어.length);   // 긴 표제어부터 치환해 부분 겹침을 막는다
   const linkify = text => {
@@ -1554,16 +1567,26 @@ function renderExamQ() {
   const { entry, idx } = exam;
   const q = entry.questions[idx];
   hideAnswer();
-  loadAnswers(entry.id).then(d => document.getElementById("btn-exam-answer").classList.toggle("hidden", !(d && d.answers)));
+  loadAnswers(examTag(entry)).then(d => document.getElementById("btn-exam-answer").classList.toggle("hidden", !(d && d.answers)));
   document.getElementById("exam-progress").textContent = `${entry.title} · ${q.n}번 / ${entry.count}문항${q.points ? ` · ${q.points}점` : ""}`;
-  const img = document.getElementById("exam-q-img");
-  img.src = q.img; img.alt = `${q.n}번 문항`;
-  setZoom("exam-q", 1);
+  const isText = entry.format === "text";
+  const view = document.getElementById("exam-q-view");
+  view.querySelector(".zoom-bar").classList.toggle("hidden", isText);
+  document.getElementById("exam-q-panel").classList.toggle("hidden", isText);
+  const textBox = document.getElementById("exam-q-text");
+  textBox.classList.toggle("hidden", !isText);
+  if (isText) {
+    textBox.innerHTML = q.html + (entry.note && idx === 0 ? `<p class="qx-note">${esc(entry.note)}</p>` : "");
+  } else {
+    const img = document.getElementById("exam-q-img");
+    img.src = q.img; img.alt = `${q.n}번 문항`;
+    setZoom("exam-q", 1);
+  }
   document.querySelectorAll("#exam-q-nums button").forEach(b => b.classList.toggle("active", +b.dataset.i === idx));
   document.getElementById("btn-exam-prev").disabled = idx === 0;
   document.getElementById("btn-exam-next").disabled = idx === entry.questions.length - 1;
   // 다음 문항을 미리 받아 둔다
-  const nx = entry.questions[idx + 1]; if (nx) { const pre = new Image(); pre.src = nx.img; }
+  const nx = entry.questions[idx + 1]; if (nx && nx.img) { const pre = new Image(); pre.src = nx.img; }
   window.scrollTo({ top: 0 });
 }
 function examStep(d) {
@@ -1890,7 +1913,7 @@ async function init() {
 }
 
 // 모듈 스코프라 콘솔·자동 테스트에서 상태를 볼 수 없어 읽기 전용 핸들을 둔다
-window.__app = { get CARDS() { return CARDS; }, get session() { return session; }, get user() { return currentUser; }, get major() { return MAJOR; }, get config() { return CONFIG; }, loadStats };
+window.__app = { get CARDS() { return CARDS; }, get session() { return session; }, get user() { return currentUser; }, get major() { return MAJOR; }, set major(v) { MAJOR = v; }, get config() { return CONFIG; }, loadStats, loadExams, openExam, show };
 
 if ("serviceWorker" in navigator) {
   // 오프라인에서도 앱 껍데기가 뜨도록. 등록 실패는 무시한다(파일 프로토콜, 사설 모드 등)

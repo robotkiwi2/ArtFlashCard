@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>중등 임용 플래시카드</title>
-<meta name="app-version" content="v2.1.92">
+<meta name="app-version" content="v2.1.93">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1a1d23" media="(prefers-color-scheme: dark)">
@@ -21,7 +21,7 @@
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
-<link rel="stylesheet" href="style.css?v=73c45400">
+<link rel="stylesheet" href="style.css?v=007d7207">
 </head>
 <body>
 <header>
@@ -324,6 +324,7 @@
     <div class="exam-q-panel" id="exam-q-panel">
       <img id="exam-q-img" alt="문항">
     </div>
+    <div class="exam-q-text hidden" id="exam-q-text"></div>
     <div id="exam-answer" class="exam-answer hidden"></div>
     <div class="exam-nav">
       <button id="btn-exam-prev" class="ghost big">◀ 이전</button>
@@ -370,6 +371,6 @@
 </section>
 
 <script type="module" src="firebase.js?v=9cb2698f"></script>
-<script type="module" src="app.js?v=56c836dc"></script>
+<script type="module" src="app.js?v=dd1c7bf9"></script>
 </body>
 </html>
