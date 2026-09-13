@@ -230,6 +230,8 @@ nav button.active { background: var(--brand); color: var(--brand-fg); border-col
                               margin: 10px 0 6px; list-style: revert; }
 .filter-collapsible summary .hint { font-weight: normal; font-size: 0.78rem; color: var(--muted-lt); margin-left: 6px; }
 .filter-collapsible[open] summary { margin-bottom: 8px; }
+.filter-collapsible summary .sel-count { font-weight: normal; font-size: 0.78rem; color: var(--muted-lt); margin-left: 6px; }
+.filter-collapsible summary .sel-count.partial { color: var(--brand); }
 .filter-collapsible h3.bulk-only { margin: 4px 0 6px; justify-content: flex-end; }
 button.mini {
   border: 1px solid var(--border-lt); background: var(--panel-bg); color: var(--muted);
@@ -455,7 +457,12 @@ section.enter { animation: screen-in 0.22s ease-out; }
 .me-stat span { font-size: 0.82rem; color: var(--muted); }
 
 /* ===== 네비게이션: 데스크톱은 헤더, 폰은 하단 고정 바 ===== */
-nav button .ico { display: none; }
+svg.ico { width: 1.15em; height: 1.15em; vertical-align: -0.2em; flex: none; }
+h1 { display: flex; align-items: center; gap: 8px; }
+h1 .title-ico { width: 1.3em; height: 1.3em; color: var(--brand); }
+nav button { display: inline-flex; align-items: center; gap: 6px; }
+.icon-btn svg.ico { width: 1.25em; height: 1.25em; vertical-align: middle; color: var(--muted); }
+#judge-buttons button { display: inline-flex; align-items: center; gap: 6px; }
 @media (max-width: 640px) {
   body { padding-bottom: 76px; }   /* 하단 바에 가리지 않게 */
   #main-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
@@ -464,6 +471,6 @@ nav button .ico { display: none; }
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); }
   #main-nav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
     border: 0; background: none; color: var(--muted); padding: 4px 2px; border-radius: 8px; font-size: 0.72rem; }
-  #main-nav button .ico { display: block; font-size: 1.25rem; line-height: 1.1; }
+  #main-nav button svg.ico { width: 1.5rem; height: 1.5rem; }
   #main-nav button.active { background: none; color: var(--brand); font-weight: bold; }
 }

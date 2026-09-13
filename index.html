@@ -11,18 +11,18 @@
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
-<link rel="stylesheet" href="style.css?v=ef5bb38c">
+<link rel="stylesheet" href="style.css?v=4e9018fd">
 </head>
 <body>
 <header>
-  <h1>🎨 임용미술 플래시카드</h1>
+  <h1><svg class="ico title-ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 1 0-20c5.5 0 10 3.6 10 8 0 2.8-2.2 5-5 5h-1.8a1.7 1.7 0 0 0-1.2 2.9c.4.4.6.9.6 1.4A2.7 2.7 0 0 1 12 22z"/><circle cx="7.5" cy="11.5" r="1.2" fill="currentColor"/><circle cx="11" cy="7.5" r="1.2" fill="currentColor"/><circle cx="16" cy="8.5" r="1.2" fill="currentColor"/></svg>임용미술 플래시카드</h1>
   <nav id="main-nav">
-    <button id="nav-setup" class="active"><span class="ico">📚</span><span class="lbl">학습 설정</span></button>
-    <button id="nav-map"><span class="ico">🗺️</span><span class="lbl">약점 지도</span></button>
-    <button id="nav-stats"><span class="ico">📊</span><span class="lbl">성적 관리</span></button>
-    <button id="nav-me"><span class="ico">👤</span><span class="lbl">내 정보</span></button>
+    <button id="nav-setup" class="active"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="lbl">학습 설정</span></button>
+    <button id="nav-map"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="lbl">약점 지도</span></button>
+    <button id="nav-stats"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="3" y1="20" x2="21" y2="20"/></svg><span class="lbl">성적 관리</span></button>
+    <button id="nav-me"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="lbl">내 정보</span></button>
   </nav>
-  <button id="btn-settings" type="button" class="icon-btn" title="설정" aria-label="설정">⚙️</button>
+  <button id="btn-settings" type="button" class="icon-btn" title="설정" aria-label="설정"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 </header>
 
 <!-- ===== 설정 ===== -->
@@ -64,7 +64,7 @@
           <li><b>표제어 제시</b> — 용어를 보고 설명·의의를 떠올립니다.</li>
           <li><b>이미지 제시</b> — 도판을 보고 작품·작가를 떠올립니다.</li>
         </ul></li>
-      <li><b>학습 시작</b> → 답을 떠올린 뒤 <b>답 보기</b> → 스스로 <b>⭕ 맞음 / ❌ 틀림</b>으로 채점합니다.
+      <li><b>학습 시작</b> → 답을 떠올린 뒤 <b>답 보기</b> → 스스로 <b>맞음 / 틀림</b>으로 채점합니다.
           솔직하게 채점할수록 출제가 정확해집니다.</li>
     </ol>
 
@@ -129,16 +129,16 @@
         <h3>과목 <span class="hint">하나만 선택 · 아래 항목이 해당 과목 것으로 갱신됩니다</span></h3>
         <div id="filter-subject" class="chip-group"></div>
       </div>
-      <div class="filter-block">
-        <h3>유형</h3>
+      <details class="filter-block filter-collapsible" open>
+        <summary>유형 <span class="sel-count" data-for="유형"></span></summary>
         <div id="filter-type" class="chip-group"></div>
-      </div>
-      <div class="filter-block">
-        <h3>시대</h3>
-        <div id="filter-era" class="chip-group"></div>
-      </div>
+      </details>
       <details class="filter-block filter-collapsible">
-        <summary>태그 <span class="hint">종류가 많아 접어 둠 · 펼쳐서 세부 선택 가능</span></summary>
+        <summary>시대 <span class="sel-count" data-for="시대"></span></summary>
+        <div id="filter-era" class="chip-group"></div>
+      </details>
+      <details class="filter-block filter-collapsible">
+        <summary>태그 <span class="sel-count" data-for="태그"></span></summary>
         <h3 class="bulk-only">
           <span class="bulk">
             <button type="button" id="tag-all" class="mini">모두 선택</button>
@@ -148,7 +148,7 @@
         <div id="filter-tag" class="chip-group scroll"></div>
       </details>
       <div class="filter-block">
-        <h3>중요도 (1=최상)</h3>
+        <h3>중요도 <span class="hint">1=최상 · 기본은 1등급만</span></h3>
         <div id="filter-imp" class="chip-group"></div>
       </div>
     </div>
@@ -189,8 +189,8 @@
     <button id="btn-hint" class="ghost big hidden">힌트</button>
     <button id="btn-reveal" class="primary big">답 보기</button>
     <div id="judge-buttons" class="hidden">
-      <button id="btn-correct" class="correct big">⭕ 맞음</button>
-      <button id="btn-wrong" class="wrong big">❌ 틀림</button>
+      <button id="btn-correct" class="correct big"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> 맞음</button>
+      <button id="btn-wrong" class="wrong big"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> 틀림</button>
     </div>
     <div id="report-box" class="report-box hidden">
       <button id="btn-report" type="button" class="ghost big">이상해요</button>
@@ -289,6 +289,6 @@
 </section>
 
 <script type="module" src="firebase.js?v=a7907f17"></script>
-<script type="module" src="app.js?v=695121fe"></script>
+<script type="module" src="app.js?v=7ff0a228"></script>
 </body>
 </html>

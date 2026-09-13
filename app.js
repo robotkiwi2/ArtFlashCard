@@ -420,7 +420,8 @@ function rebuildDependentChips() {
   DEP_KEYS.forEach(([key, id]) => {
     const values = uniqueValues(key, pool);
     allValues[key] = values;
-    filters[key] = new Set(values);   // 디폴트 전체 선택
+    // 디폴트 전체 선택. 중요도만 1등급이 있으면 1등급만 — 핵심부터 돌리고 필요할 때 넓힌다.
+    filters[key] = key === "중요도" && values.includes("1") ? new Set(["1"]) : new Set(values);
     buildChips(id, key, values);
   });
 }
@@ -447,7 +448,17 @@ function filteredPool() {
   });
 }
 
+// 접힌 항목에도 무엇이 선택돼 있는지 보이도록 요약 줄에 선택 수를 적는다
+function updateFilterSummaries() {
+  document.querySelectorAll(".sel-count[data-for]").forEach(el => {
+    const key = el.dataset.for, total = allValues[key].length, n = filters[key].size;
+    const all = n === total;
+    el.textContent = total ? (all ? "전체" : n === 0 ? "선택 없음" : `${n}/${total} 선택`) : "";
+    el.classList.toggle("partial", !all);
+  });
+}
 function updatePoolCount() {
+  updateFilterSummaries();
   const n = filteredPool().length;
   const el = document.getElementById("pool-count");
   el.textContent = `선택 범위 카드: ${n}장`;
