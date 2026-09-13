@@ -1647,8 +1647,9 @@ async function doSignup() {
   msg.textContent = "";
   if (!email || !pw) { msg.textContent = "이메일과 비밀번호를 입력하세요."; return; }
   if (pw !== pw2) { msg.textContent = "비밀번호가 서로 다릅니다."; return; }
+  const major = document.getElementById("signup-major").value;
   const btn = document.getElementById("btn-signup"); btn.disabled = true;
-  try { await FB.signup(email, pw); }   // 성공하면 onAuth → 승인 대기 화면
+  try { await FB.signup(email, pw, major); }   // 성공하면 onAuth → 승인 대기 화면
   catch (e) { msg.textContent = FB.authMessage(e); }
   finally { btn.disabled = false; }
 }
@@ -1680,9 +1681,27 @@ function applyTitles() {
   const badge = document.getElementById("major-badge");
   if (badge) { badge.textContent = name; badge.classList.toggle("hidden", !name); }
 }
-function showPending() {
+const STATUS_TEXT = {
+  pending: ["승인 대기 중", "관리자가 승인하면 카드 학습을 시작할 수 있습니다. 승인까지 보통 하루 이내입니다."],
+  hold:    ["승인 보류", "요청이 보류되었습니다. 문의: rei@readerseye.com"],
+  rejected:["승인 거절", "요청이 승인되지 않았습니다. 문의: rei@readerseye.com"],
+};
+async function showPending() {
   document.getElementById("pending-email").textContent = currentUser ? currentUser.email : "";
+  const req = USER && USER.requestedMajor;
+  let name = req || "";
+  if (req) { const m = (await FB.listMajors()).find(x => x.id === req); if (m) name = m.name; }
+  document.getElementById("pending-major").textContent = name ? `[${name}] 전공` : "";
+  const [title, note] = STATUS_TEXT[(USER && USER.status) || "pending"] || STATUS_TEXT.pending;
+  document.getElementById("pending-title").textContent = title;
+  document.getElementById("pending-note").textContent = note;
   show("pending");
+}
+async function fillMajorSelect() {
+  const sel = document.getElementById("signup-major");
+  if (sel.options.length) return;
+  const list = await FB.listMajors();
+  (list.length ? list : [{ id: "art", name: "미술" }]).forEach(m => { const o = document.createElement("option"); o.value = m.id; o.textContent = m.name; sel.appendChild(o); });
 }
 async function bootUserData() {
   setLoginMsg("권한을 확인하는 중…");
@@ -1776,7 +1795,7 @@ async function init() {
   });
 
   document.getElementById("btn-login").onclick = doLogin;
-  document.getElementById("btn-show-signup").onclick = () => { document.getElementById("login-form").classList.add("hidden"); document.getElementById("signup-form").classList.remove("hidden"); };
+  document.getElementById("btn-show-signup").onclick = () => { document.getElementById("login-form").classList.add("hidden"); document.getElementById("signup-form").classList.remove("hidden"); fillMajorSelect(); };
   document.getElementById("btn-show-login").onclick = () => { document.getElementById("signup-form").classList.add("hidden"); document.getElementById("login-form").classList.remove("hidden"); };
   document.getElementById("btn-signup").onclick = doSignup;
   document.getElementById("btn-pending-logout").onclick = () => FB.logout();

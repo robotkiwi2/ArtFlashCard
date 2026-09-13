@@ -27,7 +27,7 @@ def main(argv):
     cur = ref.get().to_dict() or {}
     majors = [m for m in cur.get("majors", []) if m != major]
     if not remove: majors.append(major)
-    ref.set({"email": email, "majors": majors}, merge=True)
+    ref.set({"email": email, "majors": majors, "status": "approved" if majors else "pending"}, merge=True)
     print(f"{email}: majors={majors}")
     return 0
 

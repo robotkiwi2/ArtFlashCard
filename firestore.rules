@@ -11,8 +11,14 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow create: if request.auth != null && request.auth.uid == uid
-        && request.resource.data.majors is list && request.resource.data.majors.size() == 0;
+        && request.resource.data.majors is list && request.resource.data.majors.size() == 0
+        && request.resource.data.keys().hasOnly(["email", "majors", "requestedMajor", "status", "requestedAt"]);
       allow update, delete: if false;
+    }
+    // 공개 메타 (가입 폼의 전공 목록 등) — 누구나 읽기, 쓰기는 관리자 SDK
+    match /meta/{docId} {
+      allow read: if true;
+      allow write: if false;
     }
     // 카드 데이터: 허용된 전공만 읽기. common(교육학)은 전공이 하나라도 있으면 읽기. 쓰기는 관리자 SDK 만.
     match /bundle/{pkg}/files/{docId} {

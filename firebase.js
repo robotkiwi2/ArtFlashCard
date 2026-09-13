@@ -112,11 +112,27 @@ async function addReport(data) {
   await addDoc(collection(db, "reports"), { ...data, uid: u.uid, email: u.email || "", at: new Date().toISOString(), status: "open" });
 }
 
+// ----- 공개 메타 -----
+async function listMajors() {
+  try { const s = await getDoc(doc(db, "meta", "majors")); return (s.exists() && s.data().list) || []; }
+  catch { return []; }
+}
+
 // ----- 계정 -----
-async function signup(email, pw) {
+// 가입 알림: Google Apps Script 웹훅 (tools/apps_script/notify.gs). 관리자 메일로 승인/보류/거절 링크가 간다.
+const NOTIFY_URL = "";          // 배포한 Apps Script 웹 앱 URL
+const NOTIFY_TOKEN = "O0SsGrUjqI1RTOYr3f7_hIUY";   // Apps Script 스크립트 속성 SIGNUP_TOKEN 과 같은 값
+async function signup(email, pw, major) {
   const cred = await createUserWithEmailAndPassword(auth, email, pw);
-  // 승인 요청 기록: 관리자가 grant_major.py 로 전공을 부여할 때 참고한다 (규칙: 본인 문서 최초 생성만 허용)
-  try { await setDoc(doc(db, "users", cred.user.uid), { email, majors: [], requestedAt: new Date().toISOString() }); } catch {}
+  const uid = cred.user.uid, requestedAt = new Date().toISOString();
+  // 승인 요청 기록 (규칙: 본인 문서 최초 생성, majors 는 빈 배열만 허용)
+  try { await setDoc(doc(db, "users", uid), { email, majors: [], requestedMajor: major || "", status: "pending", requestedAt }); } catch (e) { console.warn(e); }
+  if (NOTIFY_URL) {
+    try {
+      await fetch(NOTIFY_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ token: NOTIFY_TOKEN, uid, email, major: major || "", requestedAt }) });
+    } catch (e) { console.warn("[signup] 알림 전송 실패", e); }
+  }
   return cred.user;
 }
 async function changePassword(currentPw, newPw) {
@@ -131,7 +147,7 @@ window.FB = {
   login: (email, pw) => signInWithEmailAndPassword(auth, email, pw),
   logout: () => signOut(auth),
   resetPassword: email => sendPasswordResetEmail(auth, email),
-  signup, changePassword, authMessage,
+  signup, changePassword, authMessage, listMajors,
   loadUser,
   loadBundle, bundleVersion, cachedBundle,
   loadProgress, writeProgress, saveProgressEntries,

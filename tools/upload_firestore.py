@@ -40,7 +40,18 @@ def main(pkgs):
     firebase_admin.initialize_app(credentials.Certificate(KEY))
     db = firebase_admin.firestore.client()
 
-    pkgs = pkgs or sorted(d for d in os.listdir(SUBJECTS) if os.path.isdir(os.path.join(SUBJECTS, d)))
+    all_pkgs = sorted(d for d in os.listdir(SUBJECTS) if os.path.isdir(os.path.join(SUBJECTS, d)))
+    pkgs = pkgs or all_pkgs
+    # 가입 폼의 희망 전공 목록 (공개 문서). kind == "major" 인 패키지만.
+    import json
+    majors = []
+    for d in all_pkgs:
+        cp = os.path.join(SUBJECTS, d, "config.json")
+        if os.path.exists(cp):
+            c = json.load(io.open(cp, encoding="utf-8"))
+            if c.get("kind") == "major": majors.append({"id": c["id"], "name": c.get("name", c["id"])})
+    db.collection("meta").document("majors").set({"list": majors})
+    print("meta/majors:", [m["id"] for m in majors])
     for pkg in pkgs:
         files = db.collection("bundle").document(pkg).collection("files")
         for name, rel in FILES.items():
