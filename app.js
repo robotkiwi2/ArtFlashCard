@@ -57,8 +57,7 @@ function parseCSV(text) {
 }
 
 async function loadCards() {
-  const res = await fetch("data/cards.csv", { cache: "no-cache" });   // 갱신 뒤 옛 카드가 남지 않도록 매번 서버에 확인
-  const text = await res.text();
+  const text = await FB.loadBundle("cards");   // Firestore 번들 (로그인 필요). 해시가 같으면 로컬 캐시
   const rows = parseCSV(text);
   const header = rows[0];
   CARDS = rows.slice(1).map(r => {
@@ -89,11 +88,8 @@ const REL_REVERSE = {
 async function loadLinks() {
   LINKS = new Map();   // 표제어 → [{ rel, other, memo }]
   let text;
-  try {
-    const res = await fetch("data/links.csv", { cache: "no-cache" });
-    if (!res.ok) return;
-    text = await res.text();
-  } catch { return; }
+  try { text = await FB.loadBundle("links"); }
+  catch { return; }
 
   const rows = parseCSV(text);
   const names = new Set(CARDS.map(c => c.표제어));
@@ -117,11 +113,52 @@ async function loadLinks() {
   }
 }
 
-// ===== 학습 기록 (localStorage) =====
+// ===== 학습 기록 =====
+// 원본은 Firestore progress/{uid}. 로컬(localStorage)은 사용자별 캐시라서 동기 호출이 가능하고,
+// 오프라인이어도 화면이 뜬다. 채점할 때마다 그 카드 항목만 클라우드에 올리고,
+// 로그인·재접속 때 로컬과 클라우드를 카드별 최신 시각(last) 기준으로 합친다.
+let currentUser = null;
+function statsKey() { return currentUser ? `${LS_KEY}:${currentUser.uid}` : LS_KEY; }
 function loadStats() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }
+  try { return JSON.parse(localStorage.getItem(statsKey())) || {}; }
   catch { return {}; }
 }
+function storeStats(stats) {
+  try { localStorage.setItem(statsKey(), JSON.stringify(stats)); } catch {}
+}
+function newer(a, b) {   // last 가 더 최근인 쪽. 없으면 있는 쪽, 둘 다 없으면 시도 수가 많은 쪽
+  if (!a) return b; if (!b) return a;
+  if (a.last && b.last) return a.last >= b.last ? a : b;
+  if (a.last || b.last) return a.last ? a : b;
+  return (a.tries || 0) >= (b.tries || 0) ? a : b;
+}
+function mergeStats(local, remote) {
+  const out = {};
+  new Set([...Object.keys(local), ...Object.keys(remote)]).forEach(id => { out[id] = newer(local[id], remote[id]); });
+  return out;
+}
+function sameStats(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+
+// 로그인 직후 한 번. 예전(로그인 이전) 기록이 기기에 남아 있으면 함께 합친다.
+async function syncProgress() {
+  let local = loadStats();
+  let legacy = null;
+  try { legacy = JSON.parse(localStorage.getItem(LS_KEY)); } catch {}
+  if (legacy && Object.keys(legacy).length) local = mergeStats(local, legacy);
+
+  let remote = null;
+  try { remote = await FB.loadProgress(currentUser.uid); }
+  catch (e) { console.warn("[sync] 클라우드 기록을 읽지 못함 — 로컬 기록으로 진행", e); storeStats(local); return; }
+
+  const merged = mergeStats(local, remote || {});
+  storeStats(merged);
+  if (!remote || !sameStats(merged, remote)) {
+    try { await FB.writeProgress(currentUser.uid, merged); }
+    catch (e) { console.warn("[sync] 클라우드 기록 저장 실패", e); return; }
+  }
+  if (legacy) { try { localStorage.removeItem(LS_KEY); } catch {} }
+}
+
 // box = 연속 정답 횟수(0~5). 맞히면 오르고 틀리면 0으로 초기화된다.
 // wrong = 오답 노트 수록 여부. 틀리면 true·맞히면 false.
 // hintUsed = 힌트(글자 수·초성)를 보고 맞힌 경우. 완전한 인출이 아니므로 box를 올리지 않아
@@ -140,7 +177,8 @@ function saveResult(cardId, isCorrect, hintUsed) {
   }
   s.last = new Date().toISOString();   // 같은 날 안에서도 순서를 가리려면 초 단위가 필요하다
   stats[cardId] = s;
-  try { localStorage.setItem(LS_KEY, JSON.stringify(stats)); } catch {}
+  storeStats(stats);
+  if (currentUser) FB.saveProgressEntry(currentUser.uid, cardId, s).catch(e => console.warn("[sync] 저장 실패", e));
 }
 
 function wrongCards() {
@@ -516,11 +554,12 @@ window.addEventListener("message", e => {
 });
 
 // ===== 화면 전환 =====
-const screens = ["setup", "quiz", "result", "stats", "map"];
+const screens = ["login", "setup", "quiz", "result", "stats", "map"];
 function show(name) {
   screens.forEach(s => document.getElementById("screen-" + s).classList.toggle("hidden", s !== name));
-  // 학습 수행 중에는 상단 네비게이션을 감춘다 (중단해야 노출)
-  document.querySelector("header nav").classList.toggle("hidden", name === "quiz");
+  // 학습 수행 중·로그인 전에는 상단 네비게이션을 감춘다
+  document.querySelector("header nav").classList.toggle("hidden", name === "quiz" || name === "login");
+  document.getElementById("user-box").classList.toggle("hidden", name === "login");
   document.getElementById("nav-setup").classList.toggle("active", name === "setup");
   document.getElementById("nav-stats").classList.toggle("active", name === "stats");
   document.getElementById("nav-map").classList.toggle("active", name === "map");
@@ -1121,26 +1160,78 @@ function backFromSession() {
 }
 
 // ===== 초기화 =====
+// ===== 로그인 =====
+function setLoginMsg(text, isError) {
+  const el = document.getElementById("login-msg");
+  el.textContent = text || "";
+  el.classList.toggle("error", !!isError);
+}
+async function doLogin() {
+  const email = document.getElementById("login-email").value.trim();
+  const pw = document.getElementById("login-pw").value;
+  if (!email || !pw) { setLoginMsg("이메일과 비밀번호를 입력하세요.", true); return; }
+  const btn = document.getElementById("btn-login");
+  btn.disabled = true; setLoginMsg("로그인 중…");
+  try { await FB.login(email, pw); }   // 성공하면 onAuth 콜백이 이어서 진행
+  catch (e) { setLoginMsg(FB.authMessage(e), true); }
+  finally { btn.disabled = false; }
+}
+async function doResetPassword() {
+  const email = document.getElementById("login-email").value.trim();
+  if (!email) { setLoginMsg("재설정 메일을 받을 이메일을 먼저 입력하세요.", true); return; }
+  try { await FB.resetPassword(email); setLoginMsg(`${email} 로 재설정 메일을 보냈습니다.`); }
+  catch (e) { setLoginMsg(FB.authMessage(e), true); }
+}
+
+// 로그인한 사용자의 데이터(카드·관계·기록)를 읽어 학습 설정 화면을 연다
+let dataLoaded = false;
+async function bootUserData() {
+  setLoginMsg("카드 데이터를 불러오는 중…");
+  try {
+    if (!dataLoaded) { await loadCards(); await loadLinks(); dataLoaded = true; }
+    await syncProgress();
+  } catch (e) {
+    console.error(e);
+    setLoginMsg("데이터를 불러오지 못했습니다: " + (e && e.message || e), true);
+    return;
+  }
+  buildSubjectChips();
+  rebuildDependentChips();     // 유형·시대·태그·중요도 전체 선택 상태로 시작
+  updatePoolCount();
+  updateWrongCount();
+  document.getElementById("login-pw").value = "";
+  setLoginMsg("");
+  show("setup");
+}
+
 async function init() {
   applyFontScale(loadFontScale());   // 저장된 글자 크기를 먼저 반영
   buildFontChips();
   applyTheme(loadTheme());           // 저장된 화면 테마를 반영 (head 인라인 스크립트가 이미 반영했어도 안전하게 재적용)
   buildThemeChips();
-  await loadCards();
-  await loadLinks();
+  show("login");
+  setLoginMsg("로그인 상태 확인 중…");
+
   document.addEventListener("click", e => {
     const b = e.target.closest && e.target.closest(".link-card");
     if (b) { e.preventDefault(); openPeek(b.dataset.name); }
   });
   document.addEventListener("keydown", e => { if (e.key === "Escape") closePeek(); });
-  buildSubjectChips();
-  rebuildDependentChips();     // 유형·시대·태그·중요도 전체 선택 상태로 시작
-  updatePoolCount();
 
   // 버튼·칩 클릭음 (이벤트 위임 → 이후 추가되는 칩에도 자동 적용)
   document.addEventListener("click", e => {
     if (e.target.closest("button, .chip")) playClick();
   });
+
+  document.getElementById("btn-login").onclick = doLogin;
+  ["login-email", "login-pw"].forEach(id =>
+    document.getElementById(id).addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); }));
+  document.getElementById("btn-reset-pw").onclick = doResetPassword;
+  document.getElementById("btn-logout").onclick = () => {
+    const inQuiz = !document.getElementById("screen-quiz").classList.contains("hidden");
+    if (inQuiz && !confirm("학습 중입니다. 로그아웃할까요? (채점한 기록은 저장됩니다)")) return;
+    FB.logout();
+  };
 
   // 태그 모두 선택 / 해제
   document.getElementById("tag-all").onclick = () => {
@@ -1177,12 +1268,28 @@ async function init() {
     if (b) startAreaSession(b.dataset.key);
   });
   document.getElementById("btn-reset").onclick = () => {
-    if (confirm("모든 학습 기록을 삭제할까요? 되돌릴 수 없습니다.")) {
-      localStorage.removeItem(LS_KEY);
+    if (confirm("모든 학습 기록을 삭제할까요? 모든 기기에서 지워지며 되돌릴 수 없습니다.")) {
+      storeStats({});
+      if (currentUser) FB.writeProgress(currentUser.uid, {}).catch(e => alert("클라우드 기록 삭제 실패: " + e));
       renderStats(); updateWrongCount();
     }
   };
-  updateWrongCount();
+
+  FB.onAuth(user => {
+    currentUser = user;
+    if (user) {
+      document.getElementById("user-email").textContent = user.email || "";
+      bootUserData();
+    } else {
+      session = null;
+      document.getElementById("user-email").textContent = "";
+      setLoginMsg("");
+      show("login");
+    }
+  });
 }
+
+// 모듈 스코프라 콘솔·자동 테스트에서 상태를 볼 수 없어 읽기 전용 핸들을 둔다
+window.__app = { get CARDS() { return CARDS; }, get session() { return session; }, get user() { return currentUser; }, loadStats };
 
 init();

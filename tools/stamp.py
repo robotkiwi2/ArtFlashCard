@@ -14,7 +14,7 @@ GitHub Pages 는 모든 파일에 max-age=600 을 붙여 이 장치가 없으면
 import hashlib, io, os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TARGETS = ["app.js", "style.css"]
+TARGETS = ["app.js", "style.css", "firebase.js"]
 
 def digest(path):
     # 작업 사본은 CRLF, 커밋본은 LF 일 수 있다(autocrlf). LF 로 맞춰 해시해야

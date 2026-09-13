@@ -11,7 +11,7 @@
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
-<link rel="stylesheet" href="style.css?v=f4f51efb">
+<link rel="stylesheet" href="style.css?v=ea3d2afe">
 </head>
 <body>
 <header>
@@ -22,10 +22,24 @@
     <button id="nav-stats">성적 관리</button>
   </nav>
   <div id="theme-toggle" class="chip-group"></div>
+  <div id="user-box" class="user-box hidden"><span id="user-email"></span><button id="btn-logout" class="mini">로그아웃</button></div>
 </header>
 
+<!-- ===== 로그인 화면 ===== -->
+<section id="screen-login">
+  <div class="panel login-panel">
+    <h2>로그인</h2>
+    <p class="hint-center">등록된 계정으로 로그인하면 폰·태블릿 어디서나 같은 학습 기록을 이어 갑니다.</p>
+    <label class="login-field">이메일<input type="email" id="login-email" autocomplete="username" inputmode="email"></label>
+    <label class="login-field">비밀번호<input type="password" id="login-pw" autocomplete="current-password"></label>
+    <button id="btn-login" class="primary big">로그인</button>
+    <p id="login-msg" class="login-msg"></p>
+    <button id="btn-reset-pw" type="button" class="ghost mini">비밀번호를 잊었어요 (재설정 메일 받기)</button>
+  </div>
+</section>
+
 <!-- ===== 학습 설정 화면 ===== -->
-<section id="screen-setup">
+<section id="screen-setup" class="hidden">
   <div class="panel">
     <h2>범위 선택</h2>
     <div class="filter-grid">
@@ -160,6 +174,7 @@
   </div>
 </section>
 
-<script src="app.js?v=1687bf69"></script>
+<script type="module" src="firebase.js?v=468346aa"></script>
+<script type="module" src="app.js?v=14b54bd1"></script>
 </body>
 </html>

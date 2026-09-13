@@ -15,3 +15,7 @@ data/cards.backup-*.csv
 
 # 검증용 임시 페이지
 _*.html
+
+# Firebase 서비스 계정 키 (절대 커밋 금지)
+firebase-admin-key.json
+*-firebase-adminsdk-*.json

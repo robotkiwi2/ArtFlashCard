@@ -403,3 +403,12 @@ button:disabled:active { transform: none; }
 .listbox-box { width: min(960px, 96vw); height: 88vh; display: flex; flex-direction: column; padding: 0; }
 .listbox-box .peek-bar { padding: 10px 14px; justify-content: space-between; }
 #listbox-frame { flex: 1; border: 0; width: 100%; background: var(--panel-bg); border-radius: 0 0 12px 12px; }
+
+/* ===== 로그인 / 사용자 ===== */
+.login-panel { max-width: 420px; margin: 24px auto; display: flex; flex-direction: column; gap: 12px; }
+.login-field { display: flex; flex-direction: column; gap: 4px; font-size: 0.95em; }
+.login-field input { font-size: 1.05em; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--input-bg); color: var(--fg); }
+.login-msg { min-height: 1.4em; margin: 0; text-align: center; font-size: 0.95em; opacity: 0.8; }
+.login-msg.error { color: #c0392b; opacity: 1; }
+.user-box { display: flex; align-items: center; gap: 8px; font-size: 0.85em; opacity: 0.85; }

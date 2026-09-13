@@ -1,11 +1,12 @@
 # ArtFlashCard
 
-중등미술 임용고시 대비 웹 플래시카드. 서버·로그인 없이 동작하는 정적 페이지입니다.
+중등미술 임용고시 대비 웹 플래시카드. 정적 페이지 + Firebase(인증·Firestore)로 동작합니다.
 
 ## 특징
 
-- **데이터**: `data/cards.csv` 한 파일만 수정하면 카드가 갱신됩니다
-- **학습 기록**: 브라우저 localStorage에 저장 (로그인 불필요, 기기별로 분리됨)
+- **데이터**: `data/cards.csv` 를 수정하고 `python tools/upload_firestore.py` 를 돌리면 카드가 갱신됩니다 (CSV 자체는 저장소에 올리지 않음)
+- **로그인**: Firebase Authentication(이메일/비밀번호). 계정은 Firebase 콘솔에서 관리자가 만들어 배포
+- **학습 기록**: Firestore `progress/{uid}` 에 사용자별 저장 → 폰·태블릿 어디서나 같은 기록. localStorage 는 캐시
 - **범위 선택**: 과목(단일) → 유형·시대·태그·중요도(복수, 기본 전체 선택)
 - **3가지 모드**: 설명 제시(기본) / 표제어 제시 / 이미지 제시
 - **자가 채점**: 답 공개 후 ⭕/❌ 로 채점 → 과목·유형·태그별 정답률 집계
@@ -18,7 +19,7 @@
 
 | 컬럼 | 설명 |
 |---|---|
-| id | 고유 번호. **재부여 금지** — 학습 기록(localStorage)의 키입니다 |
+| id | 고유 번호. **재부여 금지** — 학습 기록의 키입니다 |
 | 표제어 | 카드의 정체 |
 | 표제어변형 | 한자·외국어 등 원어 표기 (없으면 빈 값) |
 | 축1~축4 | 이 카드가 물릴 수 있는 출제 각도. `라벨: 내용` 형식. **축1만 필수** |
@@ -52,5 +53,14 @@ python -m http.server 8123
 ## 배포
 
 GitHub Pages: Settings → Pages → Source를 `main` 브랜치 `/ (root)` 로 지정.
+
+## Firebase
+
+- `firebase.js` 의 `firebaseConfig` 는 콘솔 → 프로젝트 설정 → 내 앱(웹) 값. 공개되어도 되는 값
+- Firestore 규칙은 `firestore.rules` 를 콘솔 → Firestore → 규칙에 붙여 넣는다
+- 카드 업로드: 서비스 계정 키(콘솔 → 프로젝트 설정 → 서비스 계정 → 새 비공개 키)를
+  저장소 **밖**에 `firebase-admin-key.json` 으로 두고 `pip install firebase-admin` 후
+  `python tools/upload_firestore.py`. 키는 절대 커밋하지 않는다
+- 데이터 구조: `bundle/cards`·`bundle/links` (CSV 텍스트 조각 + 해시), `progress/{uid}` (카드별 기록)
 
 기획 문서는 [기획.md](기획.md) 참조.
