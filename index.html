@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>임용미술 플래시카드</title>
-<meta name="app-version" content="v2.0.62">
+<meta name="app-version" content="v2.0.63">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1a1d23" media="(prefers-color-scheme: dark)">
@@ -21,7 +21,7 @@
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
-<link rel="stylesheet" href="style.css?v=de5cc28d">
+<link rel="stylesheet" href="style.css?v=574612f1">
 </head>
 <body>
 <header>
@@ -29,6 +29,7 @@
   <nav id="main-nav">
     <button id="nav-setup" class="active"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="lbl">학습하기</span></button>
     <button id="nav-map"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="lbl">약점 지도</span></button>
+    <button id="nav-exam"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg><span class="lbl">기출문제</span></button>
     <button id="nav-stats"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="3" y1="20" x2="21" y2="20"/></svg><span class="lbl">성적 관리</span></button>
     <button id="nav-me"><svg class="ico" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="lbl">내 정보</span></button>
   </nav>
@@ -88,6 +89,9 @@
     <h3>출제 방식</h3>
     <p>안 본 카드가 먼저 나오고, 맞힌 카드는 연속 정답 횟수(0~5단계)가 오를수록 뜸하게 나옵니다. 틀리면 0단계로 돌아가
        <b>오답 노트</b>에 들어가며, 다시 맞히면 빠집니다. 오답은 한 세션의 40%까지만 섞입니다.</p>
+
+    <h3>기출문제</h3>
+    <p>실제 시험지를 문항 단위로 잘라 한 문제씩 봅니다. 번호를 눌러 바로 이동하거나 이전/다음(키보드 ←/→)으로 넘깁니다.</p>
 
     <h3>약점 지도 · 성적 관리</h3>
     <ul>
@@ -270,6 +274,31 @@
   </div>
 </section>
 
+<!-- ===== 기출문제 화면 ===== -->
+<section id="screen-exam" class="hidden">
+  <div id="exam-list-view">
+    <div class="panel">
+      <h2>기출문제</h2>
+      <p class="hint">시험지를 문항 단위로 나눠 한 문제씩 봅니다. 컬러 도판은 별첨이라 시험지에는 흑백으로 실려 있습니다.</p>
+      <div id="exam-list" class="exam-list"></div>
+    </div>
+  </div>
+  <div id="exam-q-view" class="hidden">
+    <div class="quiz-header">
+      <span id="exam-progress"></span>
+      <button id="btn-exam-back" class="ghost">목록</button>
+    </div>
+    <div class="exam-q-nums" id="exam-q-nums"></div>
+    <div class="panel exam-q-panel">
+      <img id="exam-q-img" alt="문항">
+    </div>
+    <div class="exam-nav">
+      <button id="btn-exam-prev" class="ghost big">◀ 이전</button>
+      <button id="btn-exam-next" class="primary big">다음 ▶</button>
+    </div>
+  </div>
+</section>
+
 <!-- ===== 내 정보 화면 ===== -->
 <section id="screen-me" class="hidden">
   <div class="panel">
@@ -299,6 +328,6 @@
 </section>
 
 <script type="module" src="firebase.js?v=43706c45"></script>
-<script type="module" src="app.js?v=10467c0b"></script>
+<script type="module" src="app.js?v=ebe5d41c"></script>
 </body>
 </html>

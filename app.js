@@ -581,7 +581,7 @@ window.addEventListener("message", e => {
 });
 
 // ===== 화면 전환 =====
-const screens = ["login", "setup", "quiz", "result", "stats", "map", "me"];
+const screens = ["login", "setup", "quiz", "result", "stats", "map", "me", "exam"];
 function show(name) {
   screens.forEach(s => {
     const el = document.getElementById("screen-" + s);
@@ -594,7 +594,7 @@ function show(name) {
   // 학습 수행 중·로그인 전에는 상단 네비게이션을 감춘다
   document.getElementById("main-nav").classList.toggle("hidden", name === "quiz" || name === "login");
   document.getElementById("btn-settings").classList.toggle("hidden", name === "quiz");
-  ["setup", "stats", "map", "me"].forEach(n => document.getElementById("nav-" + n).classList.toggle("active", name === n));
+  ["setup", "stats", "map", "me", "exam"].forEach(n => document.getElementById("nav-" + n).classList.toggle("active", name === n));
 }
 
 // ===== 학습 세션 =====
@@ -1306,6 +1306,53 @@ function applyUpdateIfIdle() {
   location.reload();
 }
 
+// ===== 기출문제 =====
+// exam/index.json: [{id, title, count, questions:[{n, points, text, img}]}]  (tools/extract_exam.py 가 만든다)
+let EXAMS = null, exam = null;   // exam = { entry, idx }
+async function loadExams() {
+  if (EXAMS) return EXAMS;
+  const res = await fetch(`exam/index.json?_=${Date.now()}`, { cache: "no-store" });
+  EXAMS = res.ok ? await res.json() : [];
+  return EXAMS;
+}
+async function renderExamList() {
+  const list = await loadExams();
+  const box = document.getElementById("exam-list");
+  box.innerHTML = list.length
+    ? list.map(e => `<div class="exam-item" data-id="${esc(e.id)}"><b>${esc(e.title)}</b><span>${e.count}문항</span></div>`).join("")
+    : `<p class="hint">등록된 기출문제가 없습니다.</p>`;
+  document.getElementById("exam-list-view").classList.remove("hidden");
+  document.getElementById("exam-q-view").classList.add("hidden");
+}
+function openExam(id, idx = 0) {
+  const entry = EXAMS.find(e => e.id === id);
+  if (!entry) return;
+  exam = { entry, idx };
+  const nums = document.getElementById("exam-q-nums");
+  nums.innerHTML = entry.questions.map((q, i) => `<button type="button" data-i="${i}">${q.n}</button>`).join("");
+  document.getElementById("exam-list-view").classList.add("hidden");
+  document.getElementById("exam-q-view").classList.remove("hidden");
+  renderExamQ();
+}
+function renderExamQ() {
+  const { entry, idx } = exam;
+  const q = entry.questions[idx];
+  document.getElementById("exam-progress").textContent = `${entry.title} · ${q.n}번 / ${entry.count}문항${q.points ? ` · ${q.points}점` : ""}`;
+  const img = document.getElementById("exam-q-img");
+  img.src = q.img; img.alt = `${q.n}번 문항`;
+  document.querySelectorAll("#exam-q-nums button").forEach(b => b.classList.toggle("active", +b.dataset.i === idx));
+  document.getElementById("btn-exam-prev").disabled = idx === 0;
+  document.getElementById("btn-exam-next").disabled = idx === entry.questions.length - 1;
+  // 다음 문항을 미리 받아 둔다
+  const nx = entry.questions[idx + 1]; if (nx) { const pre = new Image(); pre.src = nx.img; }
+  window.scrollTo({ top: 0 });
+}
+function examStep(d) {
+  const n = exam.idx + d;
+  if (n < 0 || n >= exam.entry.questions.length) return;
+  exam.idx = n; renderExamQ();
+}
+
 // ===== 내 정보 =====
 function renderMe() {
   const stats = loadStats();
@@ -1407,6 +1454,20 @@ async function init() {
   document.getElementById("btn-settings-close").onclick = closeSettings;
   document.getElementById("settings-overlay").addEventListener("click", e => { if (e.target.id === "settings-overlay") closeSettings(); });
   document.getElementById("nav-me").onclick = () => { renderMe(); show("me"); };
+  document.getElementById("nav-exam").onclick = () => { show("exam"); if (!exam) renderExamList(); };
+  document.getElementById("exam-list").addEventListener("click", e => {
+    const it = e.target.closest(".exam-item"); if (it) openExam(it.dataset.id);
+  });
+  document.getElementById("exam-q-nums").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (b) { exam.idx = +b.dataset.i; renderExamQ(); }
+  });
+  document.getElementById("btn-exam-back").onclick = () => { exam = null; renderExamList(); };
+  document.getElementById("btn-exam-prev").onclick = () => examStep(-1);
+  document.getElementById("btn-exam-next").onclick = () => examStep(1);
+  document.addEventListener("keydown", e => {
+    if (!exam || document.getElementById("screen-exam").classList.contains("hidden")) return;
+    if (e.key === "ArrowRight") examStep(1); else if (e.key === "ArrowLeft") examStep(-1);
+  });
   document.getElementById("btn-resync").onclick = async () => {
     const b = document.getElementById("btn-resync"); b.disabled = true; b.textContent = "동기화 중…";
     try { lastSyncAt = 0; await syncProgress(); } finally { b.disabled = false; b.textContent = "지금 동기화"; renderMe(); updateWrongCount(); }
