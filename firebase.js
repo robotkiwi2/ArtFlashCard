@@ -52,11 +52,14 @@ async function loadUser(uid) {
 const BUNDLE_CACHE = "flashcard-bundle-v2:";
 const fileRef = (pkg, name) => doc(db, "bundle", pkg, "files", name);
 
-async function loadBundle(pkg, name) {
+// cacheFirst: 캐시가 있으면 네트워크를 건드리지 않고 바로 돌려준다 (로그인 직후 빠른 시작용).
+//             새 버전 확인은 app.js 의 checkForUpdate 가 뒤에서 하고, 다르면 캐시를 버리고 다시 받는다.
+async function loadBundle(pkg, name, { cacheFirst = false } = {}) {
   const key = BUNDLE_CACHE + pkg + ":" + name;
   let cached = null;
   try { cached = JSON.parse(localStorage.getItem(key)); } catch {}
   const hasCache = cached && typeof cached.text === "string";
+  if (hasCache && cacheFirst) return cached.text;
   // 오프라인이거나 메타를 못 읽으면(연결 불량) 캐시로 바로 시작한다. 갱신 확인은 나중에 화면 복귀 때 다시 한다.
   if (hasCache && typeof navigator !== "undefined" && navigator.onLine === false) return cached.text;
   let metaSnap;
@@ -80,6 +83,10 @@ async function bundleVersion(pkg, name) {
 }
 function cachedBundle(pkg, name) {
   try { return JSON.parse(localStorage.getItem(BUNDLE_CACHE + pkg + ":" + name)) || {}; } catch { return {}; }
+}
+// 패키지의 번들 캐시를 모두 버린다 — 다음 시작 때 새로 받게 하려고
+function dropBundleCache(pkg) {
+  ["cards", "links", "config"].forEach(n => { try { localStorage.removeItem(BUNDLE_CACHE + pkg + ":" + n); } catch {} });
 }
 
 // ----- 학습 기록 -----
@@ -149,7 +156,7 @@ window.FB = {
   resetPassword: email => sendPasswordResetEmail(auth, email),
   signup, changePassword, authMessage, listMajors,
   loadUser,
-  loadBundle, bundleVersion, cachedBundle,
+  loadBundle, bundleVersion, cachedBundle, dropBundleCache,
   loadProgress, writeProgress, saveProgressEntries,
   addReport,
 };

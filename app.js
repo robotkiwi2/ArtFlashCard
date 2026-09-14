@@ -68,11 +68,20 @@ function parseCSV(text) {
   return rows;
 }
 
+// cacheFirst: 로컬 캐시가 있으면 서버 확인 없이 바로 쓴다 (로그인 직후 빠른 시작). 패키지끼리는 병렬로 받는다.
+let CACHE_FIRST = false;
 async function loadCards() {
   CARDS = []; CONFIG = {};
-  for (const pkg of PKGS) {
-    try { CONFIG[pkg] = JSON.parse(await FB.loadBundle(pkg, "config")); } catch { CONFIG[pkg] = {}; }
-    const text = await FB.loadBundle(pkg, "cards");   // Firestore 번들 (허용된 전공만). 해시가 같으면 로컬 캐시
+  const opt = { cacheFirst: CACHE_FIRST };
+  const got = await Promise.all(PKGS.map(async pkg => {
+    const [cfg, text] = await Promise.all([
+      FB.loadBundle(pkg, "config", opt).then(t => JSON.parse(t)).catch(() => ({})),
+      FB.loadBundle(pkg, "cards", opt),    // Firestore 번들 (허용된 전공만). 해시가 같으면 로컬 캐시
+    ]);
+    return { pkg, cfg, text };
+  }));
+  got.forEach(({ pkg, cfg, text }) => {
+    CONFIG[pkg] = cfg;
     const rows = parseCSV(text);
     const header = rows[0];
     rows.slice(1).forEach(r => {
@@ -81,7 +90,7 @@ async function loadCards() {
       o.태그목록 = o.태그 ? o.태그.split(";").map(t => t.trim()).filter(Boolean) : [];
       CARDS.push(o);
     });
-  }
+  });
 }
 function cardPkg(id) { const c = CARDS.find(x => x.id === String(id)); return c ? c.pkg : MAJOR; }
 
@@ -105,9 +114,8 @@ const REL_REVERSE = {
 async function loadLinks() {
   LINKS = new Map();   // 표제어 → [{ rel, other, memo }]
   let rows = [];
-  for (const pkg of PKGS) {
-    try { const t = await FB.loadBundle(pkg, "links"); rows = rows.concat(parseCSV(t).slice(1)); } catch {}
-  }
+  const texts = await Promise.all(PKGS.map(pkg => FB.loadBundle(pkg, "links", { cacheFirst: CACHE_FIRST }).catch(() => "")));
+  texts.forEach(t => { if (t) rows = rows.concat(parseCSV(t).slice(1)); });
   rows = [[]].concat(rows);   // 아래 코드가 첫 행을 머리글로 건너뛴다
   const names = new Set(CARDS.map(c => c.표제어));
   const missing = [];
@@ -195,7 +203,7 @@ function takeLegacyStats() {
 }
 async function doSyncProgress() {
   const legacy = takeLegacyStats();
-  for (const pkg of PKGS) {
+  await Promise.all(PKGS.map(async pkg => {
     let local = loadPkgStats(pkg);
     if (legacy) {
       const part = {}; Object.keys(legacy.stats).forEach(id => { if (cardPkg(id) === pkg) part[id] = legacy.stats[id]; });
@@ -203,7 +211,7 @@ async function doSyncProgress() {
     }
     let remote = null;
     try { remote = await FB.loadProgress(currentUser.uid, pkg); }
-    catch (e) { console.warn(`[sync] ${pkg} 클라우드 기록을 읽지 못함 — 로컬 기록으로 진행`, e); storePkgStats(pkg, local); continue; }
+    catch (e) { console.warn(`[sync] ${pkg} 클라우드 기록을 읽지 못함 — 로컬 기록으로 진행`, e); storePkgStats(pkg, local); return; }
     const merged = mergeStats(local, remote || {});
     storePkgStats(pkg, merged);
     try {
@@ -215,7 +223,7 @@ async function doSyncProgress() {
         if (Object.keys(won).length) await FB.saveProgressEntries(currentUser.uid, pkg, won);
       }
     } catch (e) { console.warn(`[sync] ${pkg} 클라우드 기록 저장 실패`, e); }
-  }
+  }));
   if (legacy) legacy.keys.forEach(k => { try { localStorage.removeItem(k); } catch {} });
 }
 
@@ -1471,9 +1479,11 @@ async function checkForUpdate() {
   try {
     const appHash = await latestAppHash();
     if (appHash && appHash !== runningAppHash()) found.push("앱");
-    if (currentUser) for (const pkg of PKGS) {
-      const v = await FB.bundleVersion(pkg, "cards");
-      if (v && v !== (FB.cachedBundle(pkg, "cards").v || null)) { found.push("카드"); break; }
+    if (currentUser) {
+      const vs = await Promise.all(PKGS.map(pkg => FB.bundleVersion(pkg, "cards")));
+      PKGS.forEach((pkg, i) => {
+        if (vs[i] && vs[i] !== (FB.cachedBundle(pkg, "cards").v || null)) { FB.dropBundleCache(pkg); if (!found.includes("카드")) found.push("카드"); }
+      });
     }
   } catch (e) { console.warn("[update] 확인 실패", e); return; }
   if (!found.length) return;
@@ -1752,17 +1762,20 @@ async function bootUserData() {
   MAJOR = pickMajor(majors);
   PKGS = ["common", MAJOR];
   buildMajorChips(majors);
-  setLoginMsg("카드 데이터를 불러오는 중…");
+  // 카드 캐시가 있으면 서버를 기다리지 않고 바로 시작한다. 진행 기록 동기화와 새 데이터 확인은 화면을 띄운 뒤 이어서.
+  CACHE_FIRST = PKGS.every(pkg => typeof FB.cachedBundle(pkg, "cards").text === "string");
+  setLoginMsg(CACHE_FIRST ? "준비 중…" : "카드 데이터를 처음 받는 중… (잠시 걸립니다)");
   try {
-    await loadCards(); await loadLinks(); EXAMS = null; exam = null; await loadExams().catch(() => {}); dataLoaded = true;
-    await syncProgress();
+    EXAMS = null; exam = null;
+    await Promise.all([loadCards().then(loadLinks), loadExams().catch(() => {})]);
+    dataLoaded = true;
+    if (!CACHE_FIRST) await syncProgress();
   } catch (e) {
     console.error(e);
     setLoginMsg("데이터를 불러오지 못했습니다: " + (e && e.message || e), true);
     return;
   }
   applyTitles();
-  lastUpdateCheck = Date.now();   // 방금 받았으니 잠시 확인하지 않는다
   buildSubjectChips();
   rebuildDependentChips();     // 유형·시대·태그·중요도 전체 선택 상태로 시작
   updatePoolCount();
@@ -1770,6 +1783,13 @@ async function bootUserData() {
   document.getElementById("login-pw").value = "";
   setLoginMsg("");
   show("setup");
+  if (CACHE_FIRST) {
+    // 뒤에서: 다른 기기 기록 받기 → 새 카드 데이터가 있으면 캐시를 버리고 새로고침 (학습 중이면 세션 끝난 뒤)
+    syncProgress().then(() => { updateWrongCount(); if (!inQuiz()) updatePoolCount(); })
+      .then(() => { lastUpdateCheck = 0; return checkForUpdate(); }).catch(e => console.warn("[boot] 배경 동기화 실패", e));
+  } else {
+    lastUpdateCheck = Date.now();   // 방금 받았으니 잠시 확인하지 않는다
+  }
 }
 
 async function init() {
