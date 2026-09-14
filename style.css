@@ -509,6 +509,8 @@ nav button { display: inline-flex; align-items: center; gap: 6px; }
 .src-link:hover { background: var(--hover-bg); }
 .exam-peek-box { width: min(1100px, 100%); max-height: 96vh; padding: 10px 10px 12px; }
 .exam-peek-box .exam-q-panel { max-height: calc(96vh - 110px); margin-bottom: 0; }
+.exam-peek-box .exam-answer { margin: 10px 0 0; }
+#exam-peek { z-index: 55; }   /* 답안 속 카드 링크로 여는 카드 겹창(#peek, 60)이 위에 오도록 */
 #exam-peek.peek { padding: 6px; }
 @media (max-width: 640px) {
   .exam-peek-box { border-radius: 8px; padding: 8px 6px 10px; }

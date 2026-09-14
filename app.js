@@ -964,18 +964,28 @@ function openExamPeek(id, idx) {
     el.id = "exam-peek"; el.className = "peek";
     el.innerHTML = `<div class="peek-box exam-peek-box">
         <div class="peek-bar"><b id="exam-peek-title"></b><span class="peek-path"></span>
+          <button type="button" class="ghost hidden" id="exam-peek-answer">답 보기</button>
           <button type="button" class="ghost" id="exam-peek-close">닫기</button></div>
         ${zoomBar("exam-peek")}
         <div class="exam-q-panel" id="exam-peek-panel"><img id="exam-peek-img" alt="기출 문항"></div>
+        <div id="exam-peek-ans" class="exam-answer hidden"></div>
       </div>`;
     document.body.appendChild(el);
     wireDoubleTap("exam-peek");
     el.querySelector("#exam-peek-close").onclick = () => el.classList.add("hidden");
     el.addEventListener("click", e => { if (e.target === el) el.classList.add("hidden"); });
+    // 학습 중에도 답을 확인할 수 있게 — 기출문제 탭과 같은 참고 답안·관련 카드
+    el.querySelector("#exam-peek-answer").onclick = () => {
+      const p = el._peek; if (p) toggleAnswerBox(p.entry, p.q, el.querySelector("#exam-peek-ans"), el.querySelector("#exam-peek-answer"));
+    };
   }
+  el._peek = { entry, q };
   el.querySelector("#exam-peek-title").textContent = `${entry.title} ${q.n}번${q.points ? ` (${q.points}점)` : ""}`;
   el.querySelector("#exam-peek-img").src = q.img;
   setZoom("exam-peek", 1);
+  const ansBox = el.querySelector("#exam-peek-ans"), ansBtn = el.querySelector("#exam-peek-answer");
+  ansBox.classList.add("hidden"); ansBox.innerHTML = ""; ansBtn.textContent = "답 보기"; ansBtn.classList.add("hidden");
+  loadAnswers(examTag(entry)).then(d => ansBtn.classList.toggle("hidden", !(d && d.answers)));
   el.classList.remove("hidden");
   el.querySelector(".peek-box").scrollTop = 0;
 }
@@ -1532,14 +1542,16 @@ function hideAnswer() {
   document.getElementById("exam-answer").classList.add("hidden");
   document.getElementById("btn-exam-answer").textContent = "답 보기";
 }
-async function toggleAnswer() {
-  const box = document.getElementById("exam-answer");
-  if (!box.classList.contains("hidden")) { hideAnswer(); return; }
-  const data = await loadAnswers(examTag(exam.entry));
-  const q = exam.entry.questions[exam.idx];
+function toggleAnswer() {
+  return toggleAnswerBox(exam.entry, exam.entry.questions[exam.idx], document.getElementById("exam-answer"), document.getElementById("btn-exam-answer"));
+}
+// 참고 답안 상자를 채우거나 닫는다. 기출문제 탭과 학습 중 겹창이 함께 쓴다.
+async function toggleAnswerBox(entry, q, box, btn) {
+  if (!box.classList.contains("hidden")) { box.classList.add("hidden"); btn.textContent = "답 보기"; return; }
+  const data = await loadAnswers(examTag(entry));
   const lines = data && data.answers && data.answers[String(q.n)];
   // 이 문항을 출처로 가진 카드들 — 답안 문장 속 표제어는 눌러서 열리게, 아래에는 칩으로 모두 나열
-  const tag = `${examTag(exam.entry)}${q.n}`;
+  const tag = `${examTag(entry)}${q.n}`;
   const related = CARDS.filter(c => (c.출처 || "").split(";").some(t => t.trim() === tag))
                        .sort((a, b) => b.표제어.length - a.표제어.length);   // 긴 표제어부터 치환해 부분 겹침을 막는다
   const linkify = text => {
@@ -1558,7 +1570,7 @@ async function toggleAnswer() {
   box.innerHTML = `<p class="ans-note">${esc(data && data.note || "참고 답안")}</p>` +
     (lines ? lines.map(l => `<p>${linkify(l)}</p>`).join("") : `<p class="ans-none">이 문항의 참고 답안은 아직 없습니다.</p>`) + chips;
   box.classList.remove("hidden");
-  document.getElementById("btn-exam-answer").textContent = "답 닫기";
+  btn.textContent = "답 닫기";
   box.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
@@ -1912,7 +1924,7 @@ async function init() {
 }
 
 // 모듈 스코프라 콘솔·자동 테스트에서 상태를 볼 수 없어 읽기 전용 핸들을 둔다
-window.__app = { get CARDS() { return CARDS; }, get session() { return session; }, get user() { return currentUser; }, get major() { return MAJOR; }, set major(v) { MAJOR = v; }, get config() { return CONFIG; }, loadStats, loadExams, openExam, show };
+window.__app = { get CARDS() { return CARDS; }, get session() { return session; }, get user() { return currentUser; }, get major() { return MAJOR; }, set major(v) { MAJOR = v; }, get config() { return CONFIG; }, loadStats, loadExams, openExam, openExamPeek, show };
 
 if ("serviceWorker" in navigator) {
   // 오프라인에서도 앱 껍데기가 뜨도록. 등록 실패는 무시한다(파일 프로토콜, 사설 모드 등)
