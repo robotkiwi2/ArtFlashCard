@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>중등 임용 플래시카드</title>
-<meta name="app-version" content="v2.1.96">
+<meta name="app-version" content="v2.1.97">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1a1d23" media="(prefers-color-scheme: dark)">
@@ -21,7 +21,7 @@
     if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
-<link rel="stylesheet" href="style.css?v=e9795577">
+<link rel="stylesheet" href="style.css?v=6827c998">
 </head>
 <body>
 <header>
@@ -274,7 +274,7 @@
       <span><b style="background:#c0392b"></b>취약</span>
       <span><b style="background:#d9932c"></b>익히는 중</span>
       <span><b style="background:#1e8e4e"></b>잘함</span>
-      <span class="hint">(진하기는 학습량)</span>
+      <span><i class="recent-key"></i>최근 학습 5개</span>
     </div>
     <div id="area-grid" class="area-grid"></div>
   </div>
@@ -371,6 +371,6 @@
 </section>
 
 <script type="module" src="firebase.js?v=9cb2698f"></script>
-<script type="module" src="app.js?v=ba7069bf"></script>
+<script type="module" src="app.js?v=2a11e272"></script>
 </body>
 </html>

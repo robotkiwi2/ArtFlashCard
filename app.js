@@ -1372,17 +1372,18 @@ function buildAreas() {
 }
 function scoreArea(area) {
   const stats = loadStats();
-  let seen = 0, sum = 0, tries = 0, correct = 0;
+  let seen = 0, sum = 0, tries = 0, correct = 0, lastAt = "";
   area.cards.forEach(c => {
     const s = stats[c.id];
     if (!s) return;
     seen++; tries += s.tries; correct += s.correct;
+    if (s.last && s.last > lastAt) lastAt = s.last;
     const box = s.box || 0;
     sum += s.wrong ? 0 : box >= 5 ? 1 : box >= 3 ? 0.85 : 0.5;
   });
   const total = area.cards.length;
   return {
-    total, seen, tries, correct,
+    total, seen, tries, correct, lastAt,
     seenRatio: total ? seen / total : 0,
     avg: seen ? sum / seen : 0,
     pct: tries ? Math.round(correct / tries * 100) : null,
@@ -1399,8 +1400,13 @@ function renderMap() {
     a.과목.localeCompare(b.과목, "ko") || a.유형.localeCompare(b.유형, "ko") ||
     a.eraLabel.localeCompare(b.eraLabel, "ko") || (a.part || "").localeCompare(b.part || ""));
   const el = document.getElementById("area-grid");
+  const scores = new Map(areas.map(a => [a.key, scoreArea(a)]));
+  // 최근에 학습한 영역 5개는 테두리로 표시 — 어디까지 했는지 한눈에 이어 보기 위해
+  const RECENT_N = 5;
+  const recent = new Set([...scores.entries()].filter(([, s]) => s.lastAt).sort((a, b) => b[1].lastAt.localeCompare(a[1].lastAt))
+    .slice(0, RECENT_N).map(([k]) => k));
   el.innerHTML = areas.map(area => {
-    const score = scoreArea(area);
+    const score = scores.get(area.key);
     const color = areaColor(score);   // 영역당 카드가 적어 진도는 칸 안의 숫자(본/전체)로 충분하다 — 색만으로 상태를 읽게 한다
     const subj = subjectAbbr(area.과목);
     const sub = [area.eraLabel, area.part].filter(Boolean).join(" ");
@@ -1408,8 +1414,8 @@ function renderMap() {
     const title = `${area.과목} · ${area.유형}${area.eraLabel ? " · " + area.eraLabel : ""}` +
       (area.part ? ` · ${area.part} (${area.range})` : "") + `\n` +
       `${score.seen}/${score.total}장 학습` + (score.pct !== null ? ` · 정답률 ${score.pct}%` : "");
-    return `<button type="button" class="area-cell" data-key="${esc(area.key)}"
-              style="background:${color}" title="${esc(title)}">
+    return `<button type="button" class="area-cell${recent.has(area.key) ? " recent" : ""}" data-key="${esc(area.key)}"
+              style="background:${color}" title="${esc(title)}${recent.has(area.key) ? "\n최근 학습" : ""}">
               <span class="area-label">${label}</span>
               <span class="area-count">${score.seen}/${score.total}</span>
             </button>`;

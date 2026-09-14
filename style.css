@@ -398,6 +398,9 @@ button:disabled:active { transform: none; }
              cursor: pointer; text-align: center; min-height: 56px;
              display: flex; flex-direction: column; align-items: center; justify-content: center;
              gap: 3px; transition: transform 0.08s; }
+.area-cell.recent { box-shadow: 0 0 0 2.5px var(--panel-bg), 0 0 0 5px var(--fg); }   /* 최근 학습 영역 */
+.map-legend .recent-key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: #9aa0a8;
+  box-shadow: 0 0 0 1.5px var(--panel-bg), 0 0 0 3px var(--fg); margin: 0 3px; vertical-align: -1px; }
 .area-cell:hover { transform: scale(1.05); z-index: 1; }
 .area-cell:active { transform: scale(0.97); }
 .area-label { font-size: 0.72rem; font-weight: bold; line-height: 1.25;
