@@ -1391,8 +1391,7 @@ function renderMap() {
   const el = document.getElementById("area-grid");
   el.innerHTML = areas.map(area => {
     const score = scoreArea(area);
-    const color = areaColor(score);
-    const opacity = (0.4 + 0.6 * score.seenRatio).toFixed(2);
+    const color = areaColor(score);   // 영역당 카드가 적어 진도는 칸 안의 숫자(본/전체)로 충분하다 — 색만으로 상태를 읽게 한다
     const subj = subjectAbbr(area.과목);
     const sub = [area.eraLabel, area.part].filter(Boolean).join(" ");
     const label = sub ? `${subj}·${area.유형}<br>${sub}` : `${subj}·${area.유형}`;
@@ -1400,7 +1399,7 @@ function renderMap() {
       (area.part ? ` · ${area.part} (${area.range})` : "") + `\n` +
       `${score.seen}/${score.total}장 학습` + (score.pct !== null ? ` · 정답률 ${score.pct}%` : "");
     return `<button type="button" class="area-cell" data-key="${esc(area.key)}"
-              style="background:${color};opacity:${opacity}" title="${esc(title)}">
+              style="background:${color}" title="${esc(title)}">
               <span class="area-label">${label}</span>
               <span class="area-count">${score.seen}/${score.total}</span>
             </button>`;
