@@ -1397,11 +1397,21 @@ function scoreArea(area) {
     pct: tries ? Math.round(correct / tries * 100) : null,
   };
 }
+// 영역 누적 정답률(맞힌 횟수/푼 횟수)에 따라 5단계. 거의 안 본 영역은 회색.
+const AREA_LEVELS = [   // [정답률 하한, 색, 이름]  — index.html 의 범례와 같은 값
+  [85, "#1e8e4e", "85% 이상"],
+  [70, "#7cae3f", "70~84%"],
+  [55, "#c9931a", "55~69%"],
+  [40, "#e0642a", "40~54%"],
+  [0,  "#c0392b", "40% 미만"],
+];
+function areaLevel(score) {
+  if (score.seenRatio < 0.1 || score.pct === null) return null;
+  return AREA_LEVELS.find(([min]) => score.pct >= min);
+}
 function areaColor(score) {
-  if (score.seenRatio < 0.1) return "#9aa0a8";        // 거의 안 봄 (중립 회색)
-  if (score.avg < 0.35) return "#c0392b";             // 취약 (빨강) — 오답이 섞여야만 여기 온다
-  if (score.avg < 0.7) return "#d9932c";              // 익히는 중 (주황)
-  return "#1e8e4e";                                    // 잘함 (초록)
+  const lv = areaLevel(score);
+  return lv ? lv[1] : "#9aa0a8";
 }
 function renderMap() {
   const areas = buildAreas().sort((a, b) =>
